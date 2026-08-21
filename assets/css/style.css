@@ -161,6 +161,82 @@ body {
   border: 1px solid currentColor;
 }
 
+/* Chip pilihan gaya penulisan di pages/memory.html — upsert ke tab "memories"
+   lewat memory.js, dibaca AI di router.gs (buildPromptMessages_ -> memoryContext). */
+.style-chip {
+  font-size: 13px;
+  font-weight: 500;
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--paper-100, transparent);
+  color: var(--ink-700);
+  transition: background .15s ease, color .15s ease, border-color .15s ease;
+}
+.style-chip:hover { border-color: var(--lime-500, #C6FF3D); }
+.style-chip.is-active {
+  background: var(--lime-500, #C6FF3D);
+  border-color: var(--lime-500, #C6FF3D);
+  color: var(--ink-900, #0A0C11);
+  font-weight: 600;
+}
+
+/* Overlay loading full-screen untuk login/register (perbaikan #1) — dulu satu-satunya
+   umpan balik proses adalah toast di pojok (gampang tak dilihat) + spinner kecil di
+   tombol. Overlay ini eksplisit menutupi layar supaya user PASTI tahu masih diproses,
+   dipasang lewat JS: authOverlay.classList.remove("hidden") saat submit, ditutup lagi
+   di finally block (baik sukses maupun gagal). */
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+.auth-loading-overlay {
+  position: fixed; inset: 0; z-index: 200;
+  display: grid; place-items: center;
+  background: rgba(10, 12, 17, 0.82);
+  backdrop-filter: blur(3px);
+  animation: fadeIn .15s ease;
+}
+.auth-loading-card {
+  display: flex; flex-direction: column; align-items: center; gap: 14px;
+  padding: 28px 36px;
+}
+.auth-loading-ring {
+  width: 40px; height: 40px;
+  border-radius: 999px;
+  border: 3px solid var(--line);
+  border-top-color: var(--lime-500);
+  animation: spin-slow .8s linear infinite;
+}
+.auth-loading-text {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  color: var(--ink-700);
+  text-align: center;
+}
+
+/* Menu "Unduh" (PDF/Word/Excel) di bubble jawaban AI (perbaikan #4) — dropdown-nya
+   position:absolute jadi harus tetap terlihat walau mouse tidak lagi hover baris
+   aksi (msg-actions), makanya dipaksa opacity:1 lewat class .menu-open yang
+   ditambahkan/dilepas oleh bindMessageActions() di chat.js. */
+.msg-actions.menu-open { opacity: 1 !important; }
+[data-export-menu] { box-shadow: 0 8px 24px rgba(0,0,0,.35); }
+
+/* Composer mengecil saat user geser ke bawah di HP (perbaikan responsif mobile) —
+   supaya area baca chat lebih leluasa saat scroll, lalu otomatis melebar lagi begitu
+   scroll ke atas atau composer di-fokus. Logika toggle class .composer-compact ada
+   di chat.js (bindComposerAutoCollapse), CSS ini cuma transisi visualnya. Dibatasi
+   ke breakpoint mobile lewat media query supaya desktop tidak terpengaruh. */
+.composer-bar { transition: padding .2s ease; }
+#composerForm { transition: padding .2s ease; }
+#composerInput { transition: max-height .2s ease, opacity .2s ease; }
+
+@media (max-width: 767px) {
+  .composer-bar.composer-compact { padding-top: 8px; padding-bottom: 8px; }
+  .composer-bar.composer-compact #composerForm { padding: 8px 10px; }
+  .composer-bar.composer-compact #composerInput {
+    max-height: 20px;
+    overflow: hidden;
+  }
+}
+
 .thin-scroll::-webkit-scrollbar { width: 6px; }
 .thin-scroll::-webkit-scrollbar-thumb { background: var(--line); border-radius: 999px; }
 

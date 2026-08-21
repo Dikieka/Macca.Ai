@@ -112,6 +112,16 @@
     </div>
   </div>
 
+  <!-- Overlay loading (perbaikan #1): tampil SELAMA proses masuk berjalan (email/password
+       maupun Google), ditutup lagi di finally block JS di bawah. Menggantikan toast sebagai
+       satu-satunya umpan balik proses — toast tetap dipakai, tapi cuma untuk error final. -->
+  <div id="authOverlay" class="auth-loading-overlay hidden" role="status" aria-live="polite">
+    <div class="auth-loading-card">
+      <div class="auth-loading-ring"></div>
+      <p class="auth-loading-text" id="authOverlayText">Memeriksa akunmu…</p>
+    </div>
+  </div>
+
 <script type="module">
   import { CONFIG, isGoogleClientConfigured } from "../assets/js/lib/config.js";
   import { callApi, ApiError } from "../assets/js/lib/api.js";
@@ -123,6 +133,16 @@
 
   const form = document.getElementById("loginForm");
   const submitBtn = document.getElementById("submitBtn");
+  const overlay = document.getElementById("authOverlay");
+  const overlayText = document.getElementById("authOverlayText");
+
+  function showAuthOverlay(text) {
+    overlayText.textContent = text;
+    overlay.classList.remove("hidden");
+  }
+  function hideAuthOverlay() {
+    overlay.classList.add("hidden");
+  }
 
   function fieldError(id, msg) {
     const input = document.getElementById(id);
@@ -174,9 +194,11 @@
     if (!valid) return;
 
     setLoading(submitBtn, true, "Masuk…");
+    showAuthOverlay("Memeriksa email & kata sandi…");
     try {
       const data = await callApi("login", { email, password }, { auth: false });
       setSession({ token: data.token, user: data.user });
+      overlayText.textContent = `Selamat datang, ${data.user.fullName || "kembali"}! Mengalihkan…`;
       showToast(`Selamat datang, ${data.user.fullName || "kembali"}!`, "success");
       await goToChat();
     } catch (err) {
@@ -184,6 +206,7 @@
       showToast(msg, "error");
     } finally {
       setLoading(submitBtn, false);
+      hideAuthOverlay();
     }
   });
 
@@ -212,13 +235,17 @@
   }
 
   async function handleGoogleCredential(response) {
+    showAuthOverlay("Menghubungkan dengan Google…");
     try {
       const data = await callApi("googleLogin", { idToken: response.credential }, { auth: false });
       setSession({ token: data.token, user: data.user });
+      overlayText.textContent = `Selamat datang, ${data.user.fullName}! Mengalihkan…`;
       showToast(`Selamat datang, ${data.user.fullName}!`, "success");
       await goToChat();
     } catch (err) {
       showToast(err instanceof ApiError ? err.message : "Login Google gagal.", "error");
+    } finally {
+      hideAuthOverlay();
     }
   }
 

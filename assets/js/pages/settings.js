@@ -25,7 +25,6 @@ function prefillForm() {
   document.getElementById("fullName").value = user.fullName || "";
   document.getElementById("email").value = user.email || "";
   document.getElementById("preferredLanguage").value = user.preferredLanguage || "id";
-  document.getElementById("writingStyle").value = user.writingStyle || "formal";
   document.getElementById("avatarPreview").textContent = (user.fullName || "U").charAt(0).toUpperCase();
 }
 
@@ -38,7 +37,6 @@ function bindForm() {
       const { user } = await callApi("updateProfile", {
         fullName: document.getElementById("fullName").value.trim(),
         preferredLanguage: document.getElementById("preferredLanguage").value,
-        writingStyle: document.getElementById("writingStyle").value,
       });
       const current = getSession();
       setSession({ token: current.token, user });

@@ -90,23 +90,17 @@
             <label class="text-sm font-medium text-ink-900">Email</label>
             <input id="email" type="email" disabled class="mt-1.5 w-full rounded-md border border-[var(--line)] bg-paper-100 px-3.5 py-2.5 text-sm text-ink-500" />
           </div>
-          <div class="grid sm:grid-cols-2 gap-4">
-            <div>
-              <label class="text-sm font-medium text-ink-900">Bahasa</label>
-              <select id="preferredLanguage" class="mt-1.5 w-full rounded-md border border-[var(--line)] bg-paper-100 px-3.5 py-2.5 text-sm outline-none focus:border-lime-500">
-                <option value="id">Indonesia</option>
-                <option value="en">English</option>
-              </select>
-            </div>
-            <div>
-              <label class="text-sm font-medium text-ink-900">Gaya penulisan</label>
-              <select id="writingStyle" class="mt-1.5 w-full rounded-md border border-[var(--line)] bg-paper-100 px-3.5 py-2.5 text-sm outline-none focus:border-lime-500">
-                <option value="formal">Formal</option>
-                <option value="santai">Santai</option>
-                <option value="akademik">Akademik</option>
-              </select>
-            </div>
+          <div>
+            <label class="text-sm font-medium text-ink-900">Bahasa</label>
+            <select id="preferredLanguage" class="mt-1.5 w-full rounded-md border border-[var(--line)] bg-paper-100 px-3.5 py-2.5 text-sm outline-none focus:border-lime-500">
+              <option value="id">Indonesia</option>
+              <option value="en">English</option>
+            </select>
           </div>
+          <p class="text-xs text-ink-500 flex items-start gap-1.5 -mt-1">
+            <i data-lucide="info" class="w-3.5 h-3.5 shrink-0 mt-0.5"></i>
+            Gaya penulisan sekarang diatur lewat halaman <a href="memory.html" class="underline hover:text-amber-600">Memory</a>, supaya Macca benar-benar mengingatnya di setiap percakapan (bukan cuma tersimpan di profil).
+          </p>
           <button type="submit" id="saveProfileBtn" class="btn-ink rounded-md px-5 py-2.5 text-sm font-semibold">Simpan Perubahan</button>
         </form>
       </div>

@@ -115,6 +115,14 @@
     </div>
   </div>
 
+  <!-- Overlay loading (perbaikan #1): lihat komentar sama di pages/login.html. -->
+  <div id="authOverlay" class="auth-loading-overlay hidden" role="status" aria-live="polite">
+    <div class="auth-loading-card">
+      <div class="auth-loading-ring"></div>
+      <p class="auth-loading-text" id="authOverlayText">Membuat akunmu…</p>
+    </div>
+  </div>
+
 <script type="module">
   import { CONFIG, isGoogleClientConfigured } from "../assets/js/lib/config.js";
   import { callApi, ApiError } from "../assets/js/lib/api.js";
@@ -126,6 +134,16 @@
 
   const form = document.getElementById("registerForm");
   const submitBtn = document.getElementById("submitBtn");
+  const overlay = document.getElementById("authOverlay");
+  const overlayText = document.getElementById("authOverlayText");
+
+  function showAuthOverlay(text) {
+    overlayText.textContent = text;
+    overlay.classList.remove("hidden");
+  }
+  function hideAuthOverlay() {
+    overlay.classList.add("hidden");
+  }
 
   function fieldError(id, msg) {
     const input = document.getElementById(id);
@@ -195,9 +213,11 @@
     if (!valid) return;
 
     setLoading(submitBtn, true, "Membuat akun…");
+    showAuthOverlay("Membuat akunmu…");
     try {
       const data = await callApi("register", { fullName, email, password }, { auth: false });
       setSession({ token: data.token, user: data.user });
+      overlayText.textContent = "Akun berhasil dibuat. Mengalihkan…";
       showToast("Akun berhasil dibuat. Selamat datang!", "success");
       await goToChat();
     } catch (err) {
@@ -205,6 +225,7 @@
       showToast(msg, "error");
     } finally {
       setLoading(submitBtn, false);
+      hideAuthOverlay();
     }
   });
 
@@ -233,13 +254,17 @@
   }
 
   async function handleGoogleCredential(response) {
+    showAuthOverlay("Menghubungkan dengan Google…");
     try {
       const data = await callApi("googleLogin", { idToken: response.credential }, { auth: false });
       setSession({ token: data.token, user: data.user });
+      overlayText.textContent = `Selamat datang, ${data.user.fullName}! Mengalihkan…`;
       showToast(`Selamat datang, ${data.user.fullName}!`, "success");
       await goToChat();
     } catch (err) {
       showToast(err instanceof ApiError ? err.message : "Login Google gagal.", "error");
+    } finally {
+      hideAuthOverlay();
     }
   }
 

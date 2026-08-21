@@ -42,6 +42,7 @@ async function init() {
   initSidebarResize();
   initSidebarMobile();
   bindComposer();
+  bindComposerAutoCollapse();
   bindHeaderActions();
   bindNewChat();
   bindLogout();
@@ -329,6 +330,59 @@ function bindComposer() {
   });
 
   form.addEventListener("submit", handleSend);
+}
+
+/**
+ * Perbaikan responsif mobile: composer (kotak ketik + tombol-tombolnya) otomatis
+ * mengecil saat user menggeser (scroll) area pesan ke bawah, supaya layar HP yang
+ * sempit punya lebih banyak ruang untuk membaca chat. Begitu user scroll ke atas
+ * lagi, mendekati dasar chat, atau fokus ke composer untuk mengetik, ukurannya
+ * dikembalikan normal. Hanya aktif di breakpoint mobile (lihat media query
+ * .composer-compact di style.css) — di desktop class ini sengaja tidak berefek apa pun,
+ * ruang layar sudah cukup lega jadi tidak perlu mengecil.
+ */
+function bindComposerAutoCollapse() {
+  const scrollEl = document.getElementById("messageList");
+  const composerBar = document.getElementById("composerBar");
+  const input = document.getElementById("composerInput");
+  if (!scrollEl || !composerBar) return;
+
+  const isMobile = () => window.matchMedia("(max-width: 767px)").matches;
+  let lastScrollTop = scrollEl.scrollTop;
+  let ticking = false;
+
+  function evaluate() {
+    ticking = false;
+    if (!isMobile()) { composerBar.classList.remove("composer-compact"); return; }
+
+    const current = scrollEl.scrollTop;
+    const delta = current - lastScrollTop;
+    const distanceFromBottom = scrollEl.scrollHeight - current - scrollEl.clientHeight;
+
+    if (distanceFromBottom < 40) {
+      // Sudah (hampir) di dasar chat -> selalu tampilkan composer penuh, ini titik
+      // di mana user paling mungkin ingin langsung mengetik balasan berikutnya.
+      composerBar.classList.remove("composer-compact");
+    } else if (delta > 6) {
+      // Scroll ke bawah (menjauhi pesan terbaru, membaca riwayat) -> kecilkan.
+      composerBar.classList.add("composer-compact");
+    } else if (delta < -6) {
+      // Scroll ke atas -> kembalikan ukuran normal.
+      composerBar.classList.remove("composer-compact");
+    }
+    lastScrollTop = current;
+  }
+
+  scrollEl.addEventListener("scroll", () => {
+    if (ticking) return;
+    ticking = true;
+    requestAnimationFrame(evaluate);
+  }, { passive: true });
+
+  // User mau mengetik -> jangan biarkan composer dalam keadaan mengecil.
+  input.addEventListener("focus", () => composerBar.classList.remove("composer-compact"));
+
+  window.addEventListener("resize", () => { if (!isMobile()) composerBar.classList.remove("composer-compact"); });
 }
 
 const SMART_BULLET_RE = /^(\s*)([-*•])(\s+)(.*)$/;
@@ -732,7 +786,7 @@ async function handleSend(e) {
     // #1: simpan id pesan asli supaya tombol "Edit" bisa dipakai nanti (lihat appendMessage/startEditMessage).
     if (result.userMessage?.id) wrapper.dataset.messageId = result.userMessage.id;
 
-    typingEl.remove();
+    removeTypingIndicator(typingEl);
     await typeOutReply(result.reply.content, result.reply.model, result.reply.id, gen);
     if (result.reply.usedImage) {
       showToast("Jawaban ini dianalisis langsung dari foto yang kamu kirim.", "info");
@@ -741,7 +795,7 @@ async function handleSend(e) {
     }
     loadChatList();
   } catch (err) {
-    typingEl.remove();
+    removeTypingIndicator(typingEl);
     if (err instanceof ApiError && err.code === "ABORTED") {
       // Stop ditekan SEBELUM balasan AI sampai (bukan cuma memotong animasi ketik —
       // itu ditangani terpisah lewat stopTypingRequested di typeOutReply). Di titik
@@ -807,8 +861,26 @@ function appendMessage(role, content, animate, attachment, messageId) {
     : `<button type="button" data-regen-msg title="Buat ulang jawaban ini"
          class="flex items-center gap-1 text-[11px] text-ink-500 hover:text-ink-900 px-1.5 py-1 rounded hover:bg-paper-100">
          <i data-lucide="refresh-cw" class="w-3 h-3"></i> Buat ulang
-       </button>`;
-  const actionsRow = `<div class="msg-actions h-6 mt-1 opacity-0 group-hover:opacity-100 transition-opacity flex ${isUser ? "justify-end" : "justify-start"}">${actionsHtml}</div>`;
+       </button>
+       <button type="button" data-copy-msg title="Salin jawaban"
+         class="flex items-center gap-1 text-[11px] text-ink-500 hover:text-ink-900 px-1.5 py-1 rounded hover:bg-paper-100">
+         <i data-lucide="copy" class="w-3 h-3"></i> Salin
+       </button>
+       <div class="relative">
+         <button type="button" data-export-toggle title="Unduh sebagai PDF/Word/Excel"
+           class="flex items-center gap-1 text-[11px] text-ink-500 hover:text-ink-900 px-1.5 py-1 rounded hover:bg-paper-100">
+           <i data-lucide="download" class="w-3 h-3"></i> Unduh
+         </button>
+         <div data-export-menu class="hidden absolute left-0 bottom-full mb-1 z-20 w-36 doc-card bg-paper-50 py-1 text-xs">
+           <button type="button" data-export-format="pdf" class="w-full text-left px-3 py-1.5 hover:bg-paper-100 flex items-center gap-2"><i data-lucide="file-text" class="w-3.5 h-3.5"></i> PDF</button>
+           <button type="button" data-export-format="word" class="w-full text-left px-3 py-1.5 hover:bg-paper-100 flex items-center gap-2"><i data-lucide="file-type" class="w-3.5 h-3.5"></i> Word (.doc)</button>
+           <button type="button" data-export-format="excel" class="w-full text-left px-3 py-1.5 hover:bg-paper-100 flex items-center gap-2"><i data-lucide="table" class="w-3.5 h-3.5"></i> Excel (.xls)</button>
+         </div>
+       </div>`;
+  // #3/#4 (perbaikan tampilan): tombol aksi dulu disembunyikan sampai hover (opacity-0
+  // group-hover:opacity-100) — pola ala desktop yang butuh cursor. Di HP tidak ada cursor
+  // untuk hover, jadi tombolnya jadi tidak kelihatan/susah dipicu. Sekarang selalu tampil.
+  const actionsRow = `<div class="msg-actions h-6 mt-1 flex items-center gap-1 ${isUser ? "justify-end" : "justify-start"}">${actionsHtml}</div>`;
 
   // Lebar bubble: dulu fixed (max-w-md/max-w-lg = 28rem/32rem) sehingga pesan
   // dengan baris panjang tanpa spasi (kode, URL, JSON) bisa memaksa bubble
@@ -845,7 +917,12 @@ function appendMessage(role, content, animate, attachment, messageId) {
     // sekarang. Kalau kosong (bubble baru dibuat untuk animasi ketik lewat
     // typeOutReply()), biarkan kosong dulu — typeOutReply yang mengisi teks
     // mentah selama animasi lalu mengganti ke versi terformat di akhir.
-    if (content) textEl.innerHTML = renderFormattedText(content);
+    // `data-raw` (perbaikan #3/#4): teks mentah dipakai tombol Salin & Unduh
+    // supaya yang disalin/diekspor adalah teks aslinya, bukan HTML hasil format.
+    if (content) {
+      textEl.innerHTML = renderFormattedText(content);
+      textEl.dataset.raw = content;
+    }
   }
   return wrapper;
 }
@@ -940,8 +1017,154 @@ function bindMessageActions() {
       e.preventDefault();
       const wrapper = regenBtn.closest("[data-message-id]");
       if (wrapper) regenerateMessage(wrapper);
+      return;
     }
+
+    // ---- Salin jawaban (#3, ala ChatGPT/Claude) ----
+    const copyBtn = e.target.closest("[data-copy-msg]");
+    if (copyBtn) {
+      e.preventDefault();
+      const wrapper = copyBtn.closest("[data-message-id], .group");
+      const textEl = wrapper?.querySelector(".reply-text");
+      const raw = textEl?.dataset.raw ?? textEl?.textContent ?? "";
+      copyToClipboard_(raw, copyBtn);
+      return;
+    }
+
+    // ---- Buka/tutup menu Unduh (PDF/Word/Excel, #4) ----
+    const exportToggle = e.target.closest("[data-export-toggle]");
+    if (exportToggle) {
+      e.preventDefault();
+      const menu = exportToggle.nextElementSibling;
+      const row = exportToggle.closest(".msg-actions");
+      const willOpen = menu.classList.contains("hidden");
+      closeAllExportMenus_(); // cuma satu menu terbuka pada satu waktu
+      if (willOpen) {
+        menu.classList.remove("hidden");
+        row?.classList.add("menu-open");
+      }
+      return;
+    }
+
+    // ---- Pilih format unduhan ----
+    const formatBtn = e.target.closest("[data-export-format]");
+    if (formatBtn) {
+      e.preventDefault();
+      const wrapper = formatBtn.closest("[data-message-id], .group");
+      const textEl = wrapper?.querySelector(".reply-text");
+      const raw = (textEl?.dataset.raw ?? textEl?.textContent ?? "").trim();
+      if (!raw) { showToast("Belum ada isi jawaban untuk diunduh.", "info"); }
+      else exportAssistantMessage_(raw, formatBtn.dataset.exportFormat);
+      closeAllExportMenus_();
+      return;
+    }
+
+    // Klik di luar tombol/menu manapun -> tutup semua menu Unduh yang terbuka.
+    if (!e.target.closest("[data-export-menu]")) closeAllExportMenus_();
   });
+}
+
+function closeAllExportMenus_() {
+  document.querySelectorAll("[data-export-menu]").forEach((m) => m.classList.add("hidden"));
+  document.querySelectorAll(".msg-actions.menu-open").forEach((r) => r.classList.remove("menu-open"));
+}
+
+/** Salin ke clipboard + umpan balik visual instan di tombolnya sendiri (bukan cuma toast). */
+async function copyToClipboard_(text, btn) {
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch {
+    // Fallback kalau Clipboard API diblokir (mis. bukan konteks https) — textarea sementara.
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed";
+    ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand("copy"); } catch { showToast("Gagal menyalin.", "error"); return; }
+    ta.remove();
+  }
+  if (btn) {
+    const original = btn.innerHTML;
+    btn.innerHTML = '<i data-lucide="check" class="w-3 h-3"></i> Tersalin';
+    lucide.createIcons();
+    setTimeout(() => { btn.innerHTML = original; lucide.createIcons(); }, 1600);
+  }
+}
+
+// ---------- Unduh jawaban AI ke PDF / Word / Excel (perbaikan #4) ----------
+/**
+ * PDF: pakai jsPDF (dimuat lewat CDN di chat.html) supaya file .pdf asli, bukan cetak
+ * browser. Word & Excel: trik Blob berbasis HTML dengan mime type Office klasik
+ * (application/msword, application/vnd.ms-excel) — Word/Excel/Google Docs/Sheets semua
+ * bisa membuka file ini langsung tanpa perlu library tambahan yang berat.
+ */
+function exportAssistantMessage_(rawText, format) {
+  const title = (document.getElementById("chatTitle")?.textContent || "Jawaban Macca").trim();
+  const filenameBase = title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "").slice(0, 60) || "jawaban-macca";
+
+  if (format === "pdf") return exportToPdf_(rawText, title, filenameBase);
+  if (format === "word") return exportToWord_(rawText, title, filenameBase);
+  if (format === "excel") return exportToExcel_(rawText, title, filenameBase);
+}
+
+function exportToPdf_(rawText, title, filenameBase) {
+  const JsPDFCtor = window.jspdf?.jsPDF;
+  if (!JsPDFCtor) return showToast("Gagal memuat modul PDF, cek koneksi internet lalu coba lagi.", "error");
+  const doc = new JsPDFCtor({ unit: "pt", format: "a4" });
+  const marginX = 48, marginTop = 56, maxWidth = 500;
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(14);
+  doc.text(title, marginX, marginTop);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(11);
+  const lines = doc.splitTextToSize(rawText, maxWidth);
+  let y = marginTop + 26;
+  const pageHeight = doc.internal.pageSize.getHeight();
+  lines.forEach((line) => {
+    if (y > pageHeight - 48) { doc.addPage(); y = marginTop; }
+    doc.text(line, marginX, y);
+    y += 15;
+  });
+  doc.save(`${filenameBase}.pdf`);
+  showToast("PDF diunduh.", "success");
+}
+
+function exportToWord_(rawText, title, filenameBase) {
+  const bodyHtml = escapeHtml(rawText).split(/\n{2,}/).map((p) => `<p>${p.replace(/\n/g, "<br>")}</p>`).join("");
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${escapeHtml(title)}</title></head>
+    <body style="font-family:Calibri,Arial,sans-serif;font-size:12pt;">
+      <h2>${escapeHtml(title)}</h2>
+      ${bodyHtml}
+    </body></html>`;
+  downloadBlob_(html, "application/msword", `${filenameBase}.doc`);
+  showToast("Dokumen Word (.doc) diunduh.", "success");
+}
+
+function exportToExcel_(rawText, title, filenameBase) {
+  // Satu baris = satu paragraf/baris teks per sel, supaya tetap berguna kalau jawaban
+  // AI berbentuk tabel/daftar (mis. RAB atau data terstruktur), bukan cuma satu blok teks.
+  const rows = rawText.split(/\n/).filter((l) => l.trim().length);
+  const rowsHtml = rows.map((r) => `<tr><td>${escapeHtml(r)}</td></tr>`).join("");
+  const html = `<!DOCTYPE html><html xmlns:x="urn:schemas-microsoft-com:office:excel">
+    <head><meta charset="utf-8"><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet>
+    <x:Name>${escapeHtml(title).slice(0, 30)}</x:Name><x:WorksheetOptions></x:WorksheetOptions>
+    </x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--></head>
+    <body><table>${rowsHtml}</table></body></html>`;
+  downloadBlob_(html, "application/vnd.ms-excel", `${filenameBase}.xls`);
+  showToast("File Excel (.xls) diunduh.", "success");
+}
+
+function downloadBlob_(content, mime, filename) {
+  const blob = new Blob([content], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
 }
 
 /** Hapus semua bubble pesan SETELAH wrapper ini dari tampilan (mencerminkan truncate
@@ -1077,16 +1300,46 @@ async function regenerateMessage(wrapper) {
   }
 }
 
+/**
+ * Indikator "Macca sedang memproses" (perbaikan #2) — sebelumnya cuma tiga titik
+ * animasi tanpa keterangan, jadi pada request yang lama (dokumen panjang / model
+ * penuh) user tidak tahu apakah aplikasi masih bekerja atau macet. Sekarang ada
+ * label teks yang berubah bertahap kalau prosesnya makin lama, supaya user tetap
+ * yakin ini masih berjalan, bukan diam mendadak. Timer-nya di-clear oleh pemanggil
+ * (removeTypingIndicator) begitu balasan datang atau dibatalkan.
+ */
 function appendTypingIndicator() {
   const container = document.getElementById("messages");
   const el = document.createElement("div");
   el.className = "flex justify-start";
-  el.innerHTML = `<div class="doc-card px-4 py-3 flex gap-1.5 items-center">
-      <span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span>
+  el.innerHTML = `<div class="doc-card px-4 py-3 flex items-center gap-2.5">
+      <span class="flex gap-1.5 items-center">
+        <span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span>
+      </span>
+      <span class="typing-status text-xs font-mono text-ink-500">Macca sedang berpikir…</span>
     </div>`;
   container.appendChild(el);
   scrollToBottom();
+
+  const statusEl = el.querySelector(".typing-status");
+  const stages = [
+    { after: 0, text: "Macca sedang berpikir…" },
+    { after: 4000, text: "Masih memproses, mohon tunggu sebentar…" },
+    { after: 10000, text: "Menyusun jawaban yang cukup panjang, hampir selesai…" },
+    { after: 20000, text: "Masih berjalan — dokumen/permintaan ini butuh waktu lebih lama dari biasanya…" },
+  ];
+  const timers = stages.slice(1).map((s) => setTimeout(() => {
+    if (statusEl.isConnected) statusEl.textContent = s.text;
+  }, s.after));
+  el._typingTimers = timers; // dibersihkan di removeTypingIndicator() supaya tidak nyala setelah bubble dihapus
+
   return el;
+}
+
+function removeTypingIndicator(el) {
+  if (!el) return;
+  (el._typingTimers || []).forEach(clearTimeout);
+  el.remove();
 }
 
 /**
@@ -1108,6 +1361,7 @@ async function typeOutReply(fullText, model, messageId, gen) {
   // per-karakter tetap mulus. Begitu selesai (normal atau di-stop), ganti ke versi
   // terformat (bold/list) — lihat renderFormattedText di render.js.
   textEl.innerHTML = renderFormattedText(fullText);
+  textEl.dataset.raw = fullText; // dipakai tombol Salin & Unduh (#3/#4)
   if (model) {
     const indicator = document.getElementById("modelIndicator");
     indicator.textContent = model;

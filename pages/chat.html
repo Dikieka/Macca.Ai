@@ -8,6 +8,11 @@
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Press+Start+2P&display=swap" rel="stylesheet">
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+<!-- Export balasan AI (perbaikan #4): jsPDF untuk PDF. Excel/Word dibuat lewat trik
+     Blob HTML (mime application/vnd.ms-excel / application/msword) di chat.js — Office
+     & Google Sheets/Docs bisa membuka file ini tanpa perlu library tambahan, jadi
+     dependency-nya cukup satu CDN saja. -->
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <link rel="stylesheet" href="../assets/css/style.css" />
 <link rel="icon" type="image/x-icon" href="../assets/icons/favicon.ico" />
 <link rel="icon" type="image/png" sizes="32x32" href="../assets/icons/favicon-32x32.png" />
@@ -184,7 +189,7 @@
     </div>
 
     <!-- Prompt Composer -->
-    <div class="border-t border-[var(--line)] bg-paper-50 px-6 py-4">
+    <div id="composerBar" class="border-t border-[var(--line)] bg-paper-50 px-6 py-4 composer-bar">
       <!-- Lebar composer disamakan persis dengan kolom pesan (#messages, min(56rem,94%))
            supaya kotak ketik sejajar rapi dengan bubble chat di atasnya, bukan lebih
            lebar sendiri. Kalau kolom pesan diubah lebarnya, ubah juga angka di sini

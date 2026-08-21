@@ -25,13 +25,60 @@ function init() {
   initSidebarMobile();
   loadSidebarHistory();
   bindModal();
+  bindWritingStyleChips();
   loadMemories();
+}
+
+let memoriesCache = [];
+
+/**
+ * Konsolidasi "Gaya penulisan" (perbaikan #5): dulu field terpisah di Settings
+ * (`user.writingStyle`) yang TIDAK PERNAH dibaca saat membangun prompt AI (lihat
+ * router.gs buildPromptMessages_ versi lama) — jadi gantinya cuma tersimpan di
+ * database tanpa efek apa pun, alias fitur gimmick. Sekarang jadi satu memory
+ * biasa berkategori "writing_preference" yang MEMANG dipakai (chat.gs mengambil
+ * seluruh baris "memories" milik user dan menyisipkannya ke system prompt).
+ * Upsert: kalau sudah ada satu writing_preference tanpa projectId, update baris
+ * itu (lewat body.id) supaya tidak numpuk banyak "gaya penulisan" yang saling
+ * bertentangan di memory yang sama.
+ */
+function bindWritingStyleChips() {
+  document.querySelectorAll("#writingStyleChips .style-chip").forEach((chip) => {
+    chip.addEventListener("click", async () => {
+      const style = chip.dataset.style;
+      const existing = memoriesCache.find((m) => m.category === "writing_preference" && !m.projectId);
+      chip.disabled = true;
+      try {
+        await callApi("saveMemory", {
+          id: existing ? existing.id : undefined,
+          category: "writing_preference",
+          content: `Gaya penulisan yang disukai user: ${style}.`,
+        });
+        showToast(`Gaya penulisan diatur ke "${style}".`, "success");
+        loadMemories();
+      } catch (err) {
+        showToast(err instanceof ApiError ? err.message : "Gagal menyimpan gaya penulisan.", "error");
+      } finally {
+        chip.disabled = false;
+      }
+    });
+  });
+}
+
+function paintWritingStyleChips() {
+  const active = memoriesCache.find((m) => m.category === "writing_preference" && !m.projectId);
+  const activeText = active ? active.content : "";
+  document.querySelectorAll("#writingStyleChips .style-chip").forEach((chip) => {
+    chip.classList.toggle("is-active", !!active && activeText.includes(chip.dataset.style));
+  });
 }
 
 async function loadMemories() {
   const list = document.getElementById("memoryList");
   try {
     const memories = await callApi("getMemory", {});
+    memoriesCache = memories || [];
+    paintWritingStyleChips();
     if (!memories?.length) {
       list.innerHTML = `
         <div class="doc-card p-8 text-center">
