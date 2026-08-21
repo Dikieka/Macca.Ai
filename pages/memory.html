@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Memory — Macca.Ai</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Press+Start+2P&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+<link rel="stylesheet" href="../assets/css/style.css" />
+<link rel="icon" type="image/x-icon" href="../assets/icons/favicon.ico" />
+<link rel="icon" type="image/png" sizes="32x32" href="../assets/icons/favicon-32x32.png" />
+<link rel="icon" type="image/png" sizes="16x16" href="../assets/icons/favicon-16x16.png" />
+<link rel="apple-touch-icon" sizes="180x180" href="../assets/icons/apple-touch-icon.png" />
+<link rel="manifest" href="../assets/icons/site.webmanifest" />
+<script>
+  tailwind.config = { theme: { extend: {
+    colors: { ink:{900:'#EDF0F7',700:'#B7BECF',500:'#7B8298'}, paper:{50:'#0A0C11',100:'#14161F',200:'#20232F'}, amber:{500:'#FFC145',600:'#E0A62E'}, sage:{500:'#3CE6A6',100:'#10261F'}, clay:{500:'#FF5C7A'}, lime:{500:'#C6FF3D',600:'#A6DE22'} },
+    fontFamily: { display:['Space Grotesk','sans-serif'], sans:['Inter','system-ui','sans-serif'], mono:['JetBrains Mono','monospace'], pixel:['"Press Start 2P"','monospace'] }
+  }}}
+</script>
+</head>
+<body class="bg-paper-50 text-[var(--charcoal-900)]">
+<div class="flex h-screen overflow-hidden">
+
+  <aside id="sidebar" class="shrink-0 border-r border-[var(--line)] bg-paper-100/60 flex flex-col" style="width:256px">
+    <div class="h-16 flex items-center px-5 border-b border-[var(--line)]">
+      <a href="../index.html" class="flex items-center gap-2 font-display text-lg font-semibold text-ink-900">
+        <span class="w-6 h-6 rounded-sm bg-lime-500 text-paper-50 grid place-items-center font-pixel text-[7px]">M</span> Macca.Ai
+      </a>
+    </div>
+    <div class="p-4">
+      <a href="chat.html" class="btn-amber w-full rounded-md py-2.5 text-sm font-semibold flex items-center justify-center gap-2">
+        <i data-lucide="plus" class="w-4 h-4"></i> Chat Baru
+      </a>
+    </div>
+    <nav class="flex-1 overflow-y-auto thin-scroll px-3 space-y-1 text-sm">
+      <a href="chat.html" class="flex items-center gap-2.5 px-3 py-2 rounded-md text-ink-500 hover:bg-paper-100 hover:text-ink-900"><i data-lucide="message-square" class="w-4 h-4"></i> Chats</a>
+      <a href="projects.html" class="flex items-center gap-2.5 px-3 py-2 rounded-md text-ink-500 hover:bg-paper-100 hover:text-ink-900"><i data-lucide="folder-kanban" class="w-4 h-4"></i> Projects</a>
+      <a href="documents.html" class="flex items-center gap-2.5 px-3 py-2 rounded-md text-ink-500 hover:bg-paper-100 hover:text-ink-900"><i data-lucide="file-text" class="w-4 h-4"></i> Documents</a>
+      <a href="memory.html" class="flex items-center gap-2.5 px-3 py-2 rounded-md text-ink-900 bg-paper-100 font-semibold"><i data-lucide="brain" class="w-4 h-4"></i> Memory</a>
+      <p class="px-3 pt-5 pb-1 text-xs font-mono text-ink-500">RIWAYAT</p>
+      <div id="chatList" class="space-y-0.5">
+        <div class="doc-card p-3 animate-pulse h-8 mx-1"></div>
+        <div class="doc-card p-3 animate-pulse h-8 mx-1"></div>
+      </div>
+    </nav>
+    <div class="p-3 border-t border-[var(--line)]">
+      <a href="settings.html" class="flex items-center gap-2.5 px-3 py-2 rounded-md text-sm text-ink-500 hover:bg-paper-100 hover:text-ink-900"><i data-lucide="settings" class="w-4 h-4"></i> Settings</a>
+    </div>
+  </aside>
+
+  <div id="sidebarResizeHandle" title="Geser untuk mengubah lebar sidebar"></div>
+
+  <!-- Backdrop gelap di belakang sidebar saat panel mobile terbuka (lihat sidebar.js
+       initSidebarMobile()); di layar desktop selalu disembunyikan lewat CSS. -->
+  <div id="sidebarBackdrop" class="sidebar-backdrop" aria-hidden="true"></div>
+
+  <main class="flex-1 overflow-y-auto thin-scroll paper-texture">
+    <!-- Topbar mobile: cuma tampak di layar kecil (md:hidden) — di desktop sidebar
+         sudah selalu terlihat jadi topbar ini tidak perlu. Berisi tombol hamburger
+         buat buka #sidebar (lihat initSidebarMobile() di sidebar.js) + wordmark,
+         supaya identitas halaman & akses menu tetap ada walau sidebar disembunyikan. -->
+    <div class="md:hidden sticky top-0 z-30 h-14 flex items-center gap-3 px-4 border-b border-[var(--line)] bg-paper-50/90 backdrop-blur">
+      <button type="button" data-sidebar-toggle aria-label="Buka menu" aria-controls="sidebar"
+        class="shrink-0 w-9 h-9 grid place-items-center rounded-md border border-[var(--line)] text-ink-900 hover:bg-paper-100 transition-colors">
+        <i data-lucide="menu" class="w-5 h-5"></i>
+      </button>
+      <span class="flex items-center gap-2 font-display text-base font-semibold text-ink-900">
+        <span class="w-6 h-6 rounded-sm bg-lime-500 text-paper-50 grid place-items-center font-pixel text-[7px]">M</span> Macca.Ai
+      </span>
+    </div>
+    <div class="max-w-3xl mx-auto px-6 py-14">
+      <div class="flex items-center justify-between">
+        <div>
+          <h1 class="font-display text-3xl font-semibold text-ink-900">Memory</h1>
+          <p class="text-ink-700 mt-1 text-sm">Apa yang Macca ingat tentangmu. Lihat, ubah, atau hapus kapan saja.</p>
+        </div>
+        <button id="addMemoryBtn" class="btn-ink rounded-md px-4 py-2.5 text-sm font-semibold flex items-center gap-2">
+          <i data-lucide="plus" class="w-4 h-4"></i> Tambah
+        </button>
+      </div>
+
+      <div id="memoryList" class="mt-8 space-y-3">
+        <div class="doc-card p-4 animate-pulse h-16"></div>
+        <div class="doc-card p-4 animate-pulse h-16"></div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Modal tambah memory -->
+<div id="memoryModal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-50 grid place-items-center px-6">
+  <div class="doc-card bg-paper-50 w-full max-w-sm p-6">
+    <h2 class="font-display text-lg font-semibold text-ink-900">Tambah memory</h2>
+    <form id="memoryForm" class="mt-4 space-y-3">
+      <div>
+        <label class="text-sm font-medium text-ink-900">Kategori</label>
+        <select id="memoryCategory" class="mt-1.5 w-full rounded-md border border-[var(--line)] bg-paper-100 px-3.5 py-2.5 text-sm outline-none focus:border-lime-500">
+          <option value="preference">Preferensi</option>
+          <option value="writing_preference">Gaya Penulisan</option>
+          <option value="project_fact">Fakta Proyek</option>
+          <option value="workflow_preference">Preferensi Kerja</option>
+          <option value="long_term_goal">Tujuan Jangka Panjang</option>
+        </select>
+      </div>
+      <div>
+        <label class="text-sm font-medium text-ink-900">Isi</label>
+        <textarea id="memoryContent" rows="3" required class="mt-1.5 w-full rounded-md border border-[var(--line)] bg-paper-100 px-3.5 py-2.5 text-sm outline-none focus:border-lime-500" placeholder="Contoh: Selalu gunakan gaya formal untuk dokumen skripsi."></textarea>
+      </div>
+      <div class="flex gap-2 pt-2">
+        <button type="button" id="cancelMemoryModal" class="flex-1 rounded-md py-2.5 text-sm font-semibold border border-[var(--line)] hover:bg-paper-100">Batal</button>
+        <button type="submit" id="saveMemoryBtn" class="flex-1 btn-ink rounded-md py-2.5 text-sm font-semibold">Simpan</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script type="module" src="../assets/js/pages/memory.js"></script>
+</body>
+</html>

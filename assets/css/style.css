@@ -1,0 +1,653 @@
+/* ==========================================================================
+   Macca.Ai — Design Tokens & Shared Styles
+   Konsep visual: "Terminal Pixel" — workspace AI gelap ala editor/terminal
+   retro-modern, dengan aksen neon dan grid piksel, bukan dashboard SaaS
+   generik bertema cream/serif.
+   ========================================================================== */
+
+:root {
+  /* Permukaan gelap (dulu "paper", sekarang skala gelap: 50 = paling gelap) */
+  --paper-50: #0A0C11;      /* background utama halaman */
+  --paper-100: #14161F;     /* sidebar, card, permukaan terangkat */
+  --paper-200: #20232F;     /* border/permukaan lebih terangkat lagi */
+
+  /* Teks (dulu "ink" gelap-di-atas-terang, sekarang terang-di-atas-gelap) */
+  --ink-900: #EDF0F7;       /* teks utama/heading, hampir putih */
+  --ink-700: #B7BECF;       /* teks isi */
+  --ink-500: #7B8298;       /* teks pudar/meta */
+
+  /* Aksen neon pixel */
+  --lime-500: #C6FF3D;      /* aksen utama — CTA, highlight, cursor */
+  --lime-600: #A6DE22;
+  --amber-500: #FFC145;     /* aksen sekunder — model indicator, warning ringan */
+  --amber-600: #E0A62E;
+  --sage-500: #3CE6A6;      /* mint/cyan-hijau — memory, sukses */
+  --sage-100: #10261F;
+  --clay-500: #FF5C7A;      /* merah-pink — error, destruktif */
+
+  --line: #262B3A;          /* garis pembatas standar */
+  --charcoal-900: #EDF0F7;  /* alias teks utama (dipakai di body) */
+}
+
+@font-face {
+  font-family: 'SpaceGrotesk-fallback';
+  src: local('Arial');
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  background-color: var(--paper-50);
+  color: var(--charcoal-900);
+  font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  /* Jaring pengaman: kalau ada elemen anak yang somehow lebih lebar dari viewport
+     (mis. widget pihak ketiga seperti tombol Google Sign-In yang di-render dengan
+     lebar piksel tetap, lihat pages/login.html & register.html), body tidak ikut
+     melebar dan memicu scroll horizontal di seluruh halaman. */
+  overflow-x: hidden;
+}
+
+.font-display {
+  font-family: 'Space Grotesk', 'SpaceGrotesk-fallback', ui-sans-serif, sans-serif;
+  letter-spacing: -0.01em;
+}
+
+.font-mono {
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+}
+
+/* Font piksel sungguhan — dipakai SANGAT terbatas: logo mark & label kecil saja */
+.font-pixel {
+  font-family: 'Press Start 2P', 'JetBrains Mono', monospace;
+  letter-spacing: 0.02em;
+}
+
+/* Grid titik piksel halus, pengganti tekstur "kertas" */
+.paper-texture {
+  background-image: radial-gradient(circle at 1px 1px, rgba(198,255,61,0.09) 1px, transparent 0);
+  background-size: 20px 20px;
+}
+
+/* Scanline tipis ala layar CRT — dipakai tipis-tipis di section besar */
+.scanlines { position: relative; }
+.scanlines::after {
+  content: '';
+  position: absolute; inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(198,255,61,0.025) 0px,
+    rgba(198,255,61,0.025) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+  mix-blend-mode: overlay;
+}
+
+/* Garis bawah highlighter neon */
+.highlight-mark {
+  background-image: linear-gradient(120deg, rgba(198,255,61,0.35) 0%, rgba(198,255,61,0.35) 100%);
+  background-repeat: no-repeat;
+  background-size: 100% 0.4em;
+  background-position: 0 88%;
+  padding: 0 2px;
+  color: var(--ink-900);
+}
+
+/* Kartu bersudut piksel (stepped corner via clip-path), pengganti "sticky note" */
+.doc-card {
+  background: var(--paper-100);
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  position: relative;
+  box-shadow: 0 14px 28px -20px rgba(0,0,0,0.6);
+  clip-path: polygon(
+    0 8px, 8px 8px, 8px 0,
+    calc(100% - 8px) 0, calc(100% - 8px) 8px, 100% 8px,
+    100% 100%, 0 100%
+  );
+  transition: box-shadow .2s ease, border-color .2s ease;
+}
+
+.doc-card::before {
+  content: '';
+  position: absolute;
+  top: -1px; left: 18px;
+  width: 26px; height: 6px;
+  background: var(--lime-500);
+  opacity: 0.9;
+}
+
+.tape-corner::before { left: auto; right: 18px; }
+
+/* Hover kartu: dulu cuma ganti warna border, sekarang kartu "terangkat" dikit +
+   bayangan lebih tegas supaya terasa interaktif (dipakai luas di landing page). */
+.doc-card { transition: box-shadow .25s ease, border-color .25s ease, transform .25s ease; }
+.doc-card:hover {
+  border-color: rgba(198,255,61,0.4);
+  transform: translateY(-4px);
+  box-shadow: 0 22px 40px -20px rgba(0,0,0,0.6);
+}
+@media (prefers-reduced-motion: reduce) {
+  .doc-card:hover { transform: none; }
+}
+
+.btn-ink {
+  background: var(--ink-900);
+  color: var(--paper-50);
+  transition: transform .15s ease, background .15s ease, box-shadow .15s ease;
+  clip-path: polygon(0 6px, 6px 6px, 6px 0, calc(100% - 6px) 0, calc(100% - 6px) 6px, 100% 6px, 100% 100%, 0 100%);
+}
+.btn-ink:hover { background: #FFFFFF; transform: translateY(-1px); box-shadow: 0 0 0 1px var(--lime-500); }
+
+.btn-amber {
+  background: var(--lime-500);
+  color: #0A0C11;
+  transition: transform .15s ease, background .15s ease, box-shadow .15s ease;
+  clip-path: polygon(0 6px, 6px 6px, 6px 0, calc(100% - 6px) 0, calc(100% - 6px) 6px, 100% 6px, 100% 100%, 0 100%);
+}
+.btn-amber:hover { background: var(--lime-600); transform: translateY(-1px); box-shadow: 0 0 16px rgba(198,255,61,0.35); }
+
+.divider-dashed { border-top: 1.5px dashed var(--line); }
+
+/* Badge label — layer memory, eyebrow section, dsb */
+.layer-badge {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  padding: 2px 8px;
+  border-radius: 2px;
+  border: 1px solid currentColor;
+}
+
+.thin-scroll::-webkit-scrollbar { width: 6px; }
+.thin-scroll::-webkit-scrollbar-thumb { background: var(--line); border-radius: 999px; }
+
+/* Perbaikan #3: handle drag untuk melebar/menyempitkan sidebar kiri.
+   touch-action:none supaya pointer drag juga jalan mulus di layar sentuh (tablet). */
+#sidebarResizeHandle {
+  width: 5px;
+  flex-shrink: 0;
+  cursor: col-resize;
+  background: transparent;
+  touch-action: none;
+  transition: background-color .15s ease;
+  position: relative;
+}
+#sidebarResizeHandle::after {
+  content: '';
+  position: absolute;
+  top: 0; bottom: 0;
+  left: -3px; right: -3px; /* area sentuh lebih lebar dari garis visual */
+}
+#sidebarResizeHandle:hover { background: rgba(198,255,61,0.3); }
+
+.reveal {
+  opacity: 0;
+  transform: translateY(14px);
+  transition: opacity .6s ease, transform .6s ease;
+}
+.reveal.in-view { opacity: 1; transform: translateY(0); }
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal { opacity: 1; transform: none; transition: none; }
+  .btn-ink:hover, .btn-amber:hover { transform: none; }
+}
+
+/* Typing indicator — titik neon berkedip ala kursor terminal */
+.typing-dot {
+  width: 6px; height: 6px; border-radius: 1px;
+  background: var(--lime-500);
+  animation: typing-bounce 1s infinite ease-in-out;
+}
+.typing-dot:nth-child(2) { animation-delay: .15s; }
+.typing-dot:nth-child(3) { animation-delay: .3s; }
+@keyframes typing-bounce {
+  0%, 60%, 100% { transform: translateY(0); opacity: .4; }
+  30% { transform: translateY(-4px); opacity: 1; }
+}
+
+/* Kursor berkedip ala terminal, dipakai di hero/signature element */
+.blink-cursor {
+  display: inline-block;
+  width: 9px; height: 1.1em;
+  background: var(--lime-500);
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  animation: blink 1s steps(1) infinite;
+}
+@keyframes blink { 50% { opacity: 0; } }
+
+/* ---- Efek landing page: nav underline, glow di belakang hero, kartu mengambang,
+   chip "pop" saat hover, ikon badge berputar pelan — semuanya halus & tidak lebay. ---- */
+
+/* Garis bawah nav yang meluncur masuk saat hover, bukan langsung muncul */
+header nav a.nav-link { position: relative; }
+header nav a.nav-link::after {
+  content: '';
+  position: absolute; left: 0; right: 100%; bottom: -4px;
+  height: 2px; background: var(--lime-500);
+  transition: right .25s ease;
+}
+header nav a.nav-link:hover::after { right: 0; }
+
+/* Cahaya lembut di belakang stack dokumen hero, berdenyut pelan */
+.hero-glow {
+  position: absolute;
+  top: 50%; right: 4%;
+  width: 460px; height: 460px;
+  transform: translateY(-50%);
+  background: radial-gradient(circle, rgba(198,255,61,0.16) 0%, transparent 70%);
+  filter: blur(6px);
+  pointer-events: none;
+  animation: pulse-glow 6s ease-in-out infinite;
+}
+@keyframes pulse-glow {
+  0%, 100% { opacity: .55; transform: translateY(-50%) scale(1); }
+  50% { opacity: .95; transform: translateY(-50%) scale(1.08); }
+}
+
+/* Tiga kartu di hero mengambang pelan, masing-masing diberi animation-delay
+   berbeda lewat inline style supaya tidak serempak (lihat index.html). Referensi
+   var(--tw-rotate) supaya rotasi miring dari utility Tailwind (rotate-[..deg])
+   tetap terjaga selama animasi translateY berjalan. */
+.float-card { animation: float-soft 5s ease-in-out infinite; }
+@keyframes float-soft {
+  0%, 100% { transform: translateY(0) rotate(var(--tw-rotate, 0deg)); }
+  50% { transform: translateY(-10px) rotate(var(--tw-rotate, 0deg)); }
+}
+
+/* Badge sparkles di hero, berputar pelan sebagai aksen kecil */
+.spin-slow { animation: spin-slow 5s linear infinite; }
+@keyframes spin-slow { to { transform: rotate(360deg); } }
+
+/* Chip "untuk siapa" sedikit membesar & berubah warna saat disentuh kursor */
+.chip-pop { transition: transform .25s ease, border-color .25s ease, color .25s ease; }
+.chip-pop:hover { transform: translateY(-2px) scale(1.05); border-color: var(--lime-500); color: var(--lime-500); }
+
+@media (prefers-reduced-motion: reduce) {
+  .float-card, .spin-slow, .hero-glow { animation: none; }
+  .chip-pop:hover { transform: none; }
+}
+
+/* ==========================================================================
+   Sidebar aplikasi (chat/projects/documents/memory/project/admin/settings)
+   di layar mobile (<768px) — dulu #sidebar lebar tetap (256px, bisa digeser
+   via drag handle) dan SELALU tampil berdampingan dengan konten, jadi di HP
+   area kontennya kepepet sempit banget / harus scroll-x. Sekarang di bawah
+   768px sidebar jadi panel "off-canvas": disembunyikan di luar layar (geser
+   ke kiri) dan baru digeser masuk saat tombol hamburger (data-sidebar-toggle,
+   lihat sidebar.js initSidebarMobile()) ditekan, menutupi konten sebagai
+   overlay + ada backdrop gelap di belakangnya supaya jelas itu panel modal,
+   bukan bagian dari layout. Lebar pakai vw (bukan style.width dari JS resize)
+   supaya proporsional di berbagai ukuran HP — makanya perlu !important untuk
+   menang dari inline style="width:...px" yang dipasang initSidebarResize().
+   ========================================================================== */
+@media (max-width: 767.98px) {
+  #sidebar {
+    position: fixed;
+    top: 0; bottom: 0; left: 0;
+    width: min(84vw, 320px) !important;
+    max-width: min(84vw, 320px);
+    z-index: 50;
+    transform: translateX(-100%);
+    transition: transform .28s cubic-bezier(.22,.61,.36,1);
+    box-shadow: 0 0 0 1px var(--line);
+  }
+  #sidebar.sidebar-open { transform: translateX(0); }
+  /* Drag-to-resize cuma masuk akal dengan mouse di desktop; di mobile disembunyikan
+     supaya tidak menghalangi jari & tidak bentrok dengan gesture buka/tutup. */
+  #sidebarResizeHandle { display: none; }
+}
+
+.sidebar-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(4,5,8,0.6);
+  backdrop-filter: blur(1px);
+  z-index: 45;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .25s ease;
+}
+.sidebar-backdrop.backdrop-open {
+  opacity: 1;
+  pointer-events: auto;
+}
+@media (min-width: 768px) {
+  .sidebar-backdrop { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #sidebar { transition: none; }
+  .sidebar-backdrop { transition: none; }
+}
+
+/* ---- Menu burger mobile: panel di-collapse pakai max-height (bukan hidden)
+   supaya buka/tutupnya kelihatan meluncur halus, bukan langsung sentak. ---- */
+.mobile-menu {
+  max-height: 0;
+  opacity: 0;
+  transition: max-height .3s ease, opacity .25s ease;
+}
+.mobile-menu.menu-open { max-height: 24rem; opacity: 1; }
+@media (prefers-reduced-motion: reduce) {
+  .mobile-menu { transition: none; }
+}
+
+/* ---- Tombol "kembali ke atas": nongol setelah scroll cukup jauh, sebelum itu
+   disembunyikan lewat opacity+translateY+pointer-events (bukan display:none)
+   supaya transisinya halus saat muncul/hilang. ---- */
+.back-to-top {
+  opacity: 0;
+  transform: translateY(12px) scale(.9);
+  pointer-events: none;
+  transition: opacity .25s ease, transform .25s ease;
+}
+.back-to-top.show-btt {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+}
+@media (prefers-reduced-motion: reduce) {
+  .back-to-top { transition: opacity .15s ease; transform: none !important; }
+}
+
+a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible {
+  outline: 2px solid var(--lime-500);
+  outline-offset: 2px;
+}
+
+/* Perbaikan bug bubble chat melebar ke kiri/kanan untuk teks panjang tanpa spasi
+   (kode, URL, JSON, dsb). break-words/overflow-wrap Tailwind di elemen teks saja
+   kadang tidak cukup karena leluhurnya flex item dengan align-items != stretch
+   (items-end/items-start) yang "shrink-to-fit" ke lebar konten dan bisa melampaui
+   max-width induknya. min-width:0 di sini memutus itu supaya wrapping benar-benar
+   dihormati di semua level, bukan cuma di elemen teks paling dalam. */
+.msg-bubble, .msg-text { min-width: 0; }
+.msg-text ul, .msg-text ol { min-width: 0; }
+/* color:inherit (bukan var(--ink-900) tetap) supaya tetap kontras di bubble user
+   yang latarnya terbalik (terang, teks gelap) — lihat bg-ink-900/text-paper-50
+   di appendMessage() pada chat.js. */
+.msg-text strong { color: inherit; font-weight: 700; }
+.msg-text em { font-style: italic; }
+
+/* ---- Heading hasil markdown (#, ##, ### dst) di dalam bubble chat ----
+   Ukuran sengaja moderat (bukan skala h1 halaman) supaya tetap proporsional
+   di dalam bubble yang lebarnya dibatasi. */
+.msg-text h1, .msg-text h2, .msg-text h3,
+.msg-text h4, .msg-text h5, .msg-text h6 {
+  font-family: 'Space Grotesk', 'SpaceGrotesk-fallback', ui-sans-serif, sans-serif;
+  color: inherit;
+  font-weight: 700;
+  line-height: 1.3;
+  margin: 0.9em 0 0.4em;
+}
+.msg-text > :first-child { margin-top: 0; }
+.msg-text h1 { font-size: 1.2rem; }
+.msg-text h2 {
+  font-size: 1.08rem;
+  padding-bottom: 0.3em;
+  border-bottom: 1px solid rgba(150, 158, 180, 0.3);
+}
+.msg-text h3 { font-size: 1rem; }
+.msg-text h4, .msg-text h5, .msg-text h6 { font-size: 0.92rem; }
+
+/* ---- Garis pemisah "---" ---- */
+.msg-text hr.msg-hr {
+  border: none;
+  border-top: 1px dashed rgba(150, 158, 180, 0.4);
+  margin: 0.9em 0;
+}
+
+/* ---- Blockquote "> ..." ---- */
+.msg-text blockquote.msg-quote {
+  border-left: 3px solid var(--lime-500);
+  padding: 0.15em 0 0.15em 0.75em;
+  margin: 0.6em 0;
+  color: inherit;
+  opacity: 0.85;
+  font-style: italic;
+}
+
+/* ---- Kode: inline `code` & fenced code block ```...``` ---- */
+.msg-text code.msg-inline-code {
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+  font-size: 0.85em;
+  background: rgba(150, 158, 180, 0.18);
+  border: 1px solid rgba(150, 158, 180, 0.25);
+  border-radius: 4px;
+  padding: 0.1em 0.4em;
+  white-space: break-spaces;
+  overflow-wrap: anywhere;
+}
+.msg-text .msg-code-block {
+  margin: 0.6em 0;
+  border-radius: 8px;
+  overflow: hidden;
+  background: rgba(150, 158, 180, 0.1);
+  border: 1px solid rgba(150, 158, 180, 0.25);
+}
+.msg-text .msg-code-lang {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 0.68rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  opacity: 0.6;
+  padding: 0.35em 0.75em 0;
+}
+.msg-text .msg-code-block pre {
+  margin: 0;
+  padding: 0.6em 0.85em 0.75em;
+  overflow-x: auto;
+}
+.msg-text .msg-code-block code {
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  white-space: pre;
+}
+
+/* ---- Tabel markdown "| a | b |" ---- */
+.msg-text .msg-table-wrap {
+  margin: 0.7em 0;
+  overflow-x: auto;
+  border-radius: 8px;
+  border: 1px solid rgba(150, 158, 180, 0.3);
+}
+.msg-text table.msg-table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 0.85rem;
+}
+.msg-text table.msg-table th,
+.msg-text table.msg-table td {
+  padding: 0.45em 0.7em;
+  border-bottom: 1px solid rgba(150, 158, 180, 0.25);
+  border-right: 1px solid rgba(150, 158, 180, 0.15);
+  text-align: left;
+  vertical-align: top;
+}
+.msg-text table.msg-table th:last-child,
+.msg-text table.msg-table td:last-child { border-right: none; }
+.msg-text table.msg-table thead th {
+  background: rgba(150, 158, 180, 0.15);
+  font-family: 'Space Grotesk', 'SpaceGrotesk-fallback', sans-serif;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.msg-text table.msg-table tbody tr:last-child td { border-bottom: none; }
+.msg-text table.msg-table tbody tr:nth-child(even) { background: rgba(150, 158, 180, 0.06); }
+
+/* ---- Link [label](url) ---- */
+.msg-text a.msg-link {
+  color: var(--lime-500);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  word-break: break-word;
+}
+.msg-bubble.bg-ink-900 .msg-text a.msg-link { color: var(--lime-600); }
+
+/* Input & select gelap standar dipakai lintas form */
+.field-dark {
+  background: var(--paper-100);
+  border: 1px solid var(--line);
+  color: var(--ink-900);
+}
+.field-dark::placeholder { color: var(--ink-500); }
+.field-dark:focus { border-color: var(--lime-500); }
+
+/* ==========================================================================
+   Halaman Auth (login / register / forgot-password) — animasi & mikro-interaksi
+   ========================================================================== */
+
+/* Blob cahaya mengambang di panel kiri, 3 layer dengan delay & durasi beda */
+.auth-blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(60px);
+  pointer-events: none;
+  opacity: 0.55;
+  animation: auth-blob-float 14s ease-in-out infinite;
+}
+.auth-blob-1 { width: 340px; height: 340px; background: radial-gradient(circle, rgba(198,255,61,0.30), transparent 70%); top: -60px; left: -60px; animation-duration: 16s; }
+.auth-blob-2 { width: 280px; height: 280px; background: radial-gradient(circle, rgba(255,193,69,0.22), transparent 70%); bottom: 10%; right: -40px; animation-duration: 19s; animation-delay: -4s; }
+.auth-blob-3 { width: 220px; height: 220px; background: radial-gradient(circle, rgba(60,230,166,0.22), transparent 70%); top: 45%; left: 30%; animation-duration: 13s; animation-delay: -8s; }
+@keyframes auth-blob-float {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(24px, -18px) scale(1.06); }
+  66% { transform: translate(-18px, 14px) scale(0.96); }
+}
+
+/* Kartu chat mini yang mengambang di panel kiri, sebagai aksen visual tambahan */
+.auth-mini-chat {
+  animation: float-soft 6s ease-in-out infinite;
+}
+
+/* Masuk berurutan (stagger) untuk logo → judul → tombol Google → form → footer.
+   Elemen diberi kelas .auth-reveal + custom property --d untuk delay masing-masing,
+   supaya terasa "mengalir" alih-alih muncul serentak. */
+.auth-reveal {
+  opacity: 0;
+  transform: translateY(16px);
+  animation: auth-reveal-in .6s cubic-bezier(.22,.61,.36,1) forwards;
+  animation-delay: var(--d, 0s);
+}
+@keyframes auth-reveal-in {
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Panel kiri: fade + geser dari samping, sekali saat halaman dibuka */
+.auth-panel-left {
+  animation: auth-panel-in .8s cubic-bezier(.22,.61,.36,1) both;
+}
+@keyframes auth-panel-in {
+  from { opacity: 0; transform: translateX(-14px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+/* Getar halus saat validasi gagal — dipicu ulang lewat JS (classList remove+add) */
+.auth-shake { animation: auth-shake .38s ease; }
+@keyframes auth-shake {
+  10%, 90% { transform: translateX(-1px); }
+  20%, 80% { transform: translateX(2px); }
+  30%, 50%, 70% { transform: translateX(-4px); }
+  40%, 60% { transform: translateX(4px); }
+}
+
+/* Wrapper input: garis bawah neon yang "tumbuh" saat fokus, plus glow lembut */
+.auth-field { position: relative; }
+.auth-field input {
+  transition: border-color .2s ease, box-shadow .2s ease, background .2s ease;
+}
+.auth-field input:focus {
+  box-shadow: 0 0 0 3px rgba(198,255,61,0.12);
+}
+.auth-field::after {
+  content: '';
+  position: absolute;
+  left: 0; right: 100%; bottom: 0;
+  height: 2px;
+  background: var(--lime-500);
+  transition: right .25s ease;
+  border-radius: 2px;
+}
+.auth-field:focus-within::after { right: 0; }
+
+/* Tombol lihat/sembunyikan kata sandi */
+.pw-toggle {
+  position: absolute;
+  right: 10px; top: 50%;
+  transform: translateY(calc(-50% + 11px));
+  color: var(--ink-500);
+  transition: color .15s ease, transform .15s ease;
+  cursor: pointer;
+}
+.pw-toggle:hover { color: var(--ink-900); }
+.pw-toggle:active { transform: translateY(calc(-50% + 11px)) scale(0.88); }
+
+/* Indikator kekuatan kata sandi: 3 segmen yang terisi + berubah warna */
+.pw-strength { display: flex; gap: 4px; margin-top: 8px; height: 4px; }
+.pw-strength i {
+  flex: 1; border-radius: 999px;
+  background: var(--line);
+  transition: background-color .3s ease, transform .3s ease;
+  transform: scaleY(1);
+}
+.pw-strength[data-level="1"] i:nth-child(1) { background: var(--clay-500); }
+.pw-strength[data-level="2"] i:nth-child(1),
+.pw-strength[data-level="2"] i:nth-child(2) { background: var(--amber-500); }
+.pw-strength[data-level="3"] i:nth-child(1),
+.pw-strength[data-level="3"] i:nth-child(2),
+.pw-strength[data-level="3"] i:nth-child(3) { background: var(--sage-500); }
+.pw-strength-label { font-size: 11px; color: var(--ink-500); margin-top: 4px; display: block; min-height: 14px; }
+
+/* Skeleton shimmer sementara menunggu skrip Google Identity Services siap */
+.google-skeleton {
+  height: 44px; border-radius: 6px;
+  background: linear-gradient(90deg, var(--paper-100) 25%, var(--paper-200) 37%, var(--paper-100) 63%);
+  background-size: 400% 100%;
+  animation: google-shimmer 1.4s ease infinite;
+  border: 1px solid var(--line);
+}
+@keyframes google-shimmer { 0% { background-position: 100% 50%; } 100% { background-position: 0 50%; } }
+
+/* Tombol Google: bungkus supaya muncul halus begitu render selesai */
+#googleBtn { transition: opacity .3s ease; }
+
+/* Notice kecil (dashed, amber) dipakai saat Google Sign-In belum dikonfigurasi / gagal dimuat */
+.auth-notice {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--amber-500);
+  background: rgba(255,193,69,0.08);
+  border: 1px dashed rgba(255,193,69,0.4);
+  border-radius: 6px;
+  padding: 8px 10px;
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+.auth-notice i { flex-shrink: 0; margin-top: 1px; }
+
+/* Tombol submit: state sukses (centang) sebelum redirect */
+.btn-ink.is-success { background: var(--sage-500); color: #06110C; }
+.btn-success-pop { animation: btn-success-pop .4s cubic-bezier(.34,1.56,.64,1); }
+@keyframes btn-success-pop { 0% { transform: scale(1); } 40% { transform: scale(1.04); } 100% { transform: scale(1); } }
+
+/* Ikon sukses di halaman lupa-sandi: pop-in bulat */
+.success-pop-icon { animation: success-pop-icon .5s cubic-bezier(.34,1.56,.64,1) both; }
+@keyframes success-pop-icon {
+  0% { transform: scale(0.5); opacity: 0; }
+  70% { transform: scale(1.08); opacity: 1; }
+  100% { transform: scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-blob, .auth-mini-chat, .auth-reveal, .auth-panel-left,
+  .auth-shake, .google-skeleton, .btn-success-pop, .success-pop-icon {
+    animation: none !important;
+  }
+  .auth-reveal { opacity: 1; transform: none; }
+  .auth-panel-left { opacity: 1; transform: none; }
+}

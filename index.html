@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Macca.Ai — Nemenin Kamu Ngerjain Dokumen, Bareng AI</title>
+<meta name="description" content="Macca.Ai bantu mahasiswa, dosen, peneliti, sampai profesional buat baca, nulis, dan ngelola dokumen bareng AI yang beneran inget konteks kamu — bukan sekadar chatbot biasa." />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Press+Start+2P&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+<link rel="stylesheet" href="assets/css/style.css" />
+<link rel="icon" type="image/x-icon" href="assets/icons/favicon.ico" />
+<link rel="icon" type="image/png" sizes="32x32" href="assets/icons/favicon-32x32.png" />
+<link rel="icon" type="image/png" sizes="16x16" href="assets/icons/favicon-16x16.png" />
+<link rel="apple-touch-icon" sizes="180x180" href="assets/icons/apple-touch-icon.png" />
+<link rel="manifest" href="assets/icons/site.webmanifest" />
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          ink: { 900:'#EDF0F7', 700:'#B7BECF', 500:'#7B8298' },
+          paper: { 50:'#0A0C11', 100:'#14161F', 200:'#20232F' },
+          amber: { 500:'#FFC145', 600:'#E0A62E' },
+          sage: { 500:'#3CE6A6', 100:'#10261F' },
+          clay: { 500:'#FF5C7A' },
+          lime: { 500:'#C6FF3D', 600:'#A6DE22' },
+        },
+        fontFamily: {
+          display: ['Space Grotesk', 'sans-serif'],
+          sans: ['Inter', 'system-ui', 'sans-serif'],
+          mono: ['JetBrains Mono', 'monospace'],
+          pixel: ['"Press Start 2P"', 'monospace'],
+        }
+      }
+    }
+  }
+</script>
+</head>
+<body class="bg-paper-50 text-[var(--charcoal-900)]">
+
+<!-- ============ NAVBAR ============ -->
+<header class="sticky top-0 z-50 bg-paper-50/90 backdrop-blur border-b border-[var(--line)]">
+  <div class="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+    <a href="index.html" class="flex items-center gap-2 font-display text-xl font-semibold text-ink-900">
+      <span class="w-7 h-7 rounded-sm bg-lime-500 text-paper-50 grid place-items-center font-pixel text-[8px]">M</span>
+      Macca.Ai
+    </a>
+    <nav class="hidden md:flex items-center gap-8 text-sm font-medium text-ink-700">
+      <a href="#fitur" class="nav-link hover:text-ink-900">Fitur</a>
+      <a href="#akademik" class="nav-link hover:text-ink-900">Akademik</a>
+      <a href="#memory" class="nav-link hover:text-ink-900">Memory</a>
+      <a href="#cara-kerja" class="nav-link hover:text-ink-900">Cara Kerja</a>
+    </nav>
+    <div class="flex items-center gap-3">
+      <a href="pages/login.html" class="hidden sm:inline-block text-sm font-semibold text-ink-900 hover:text-amber-600">Masuk</a>
+      <a href="pages/register.html" class="btn-amber text-sm font-semibold px-4 py-2 rounded-md">Coba Gratis</a>
+      <!-- Burger menu: cuma tampak di mobile (md:hidden), taruh di samping kanan
+           tombol "Coba Gratis" sesuai permintaan. aria-expanded di-toggle lewat
+           script kecil di bawah untuk aksesibilitas (screen reader tahu status buka/tutup). -->
+      <button type="button" id="mobileMenuBtn" aria-expanded="false" aria-controls="mobileMenu"
+        class="md:hidden w-9 h-9 grid place-items-center rounded-md border border-[var(--line)] text-ink-900 hover:bg-paper-100 transition-colors">
+        <i data-lucide="menu" id="mobileMenuIconOpen" class="w-5 h-5"></i>
+        <i data-lucide="x" id="mobileMenuIconClose" class="w-5 h-5 hidden"></i>
+        <span class="sr-only">Buka menu</span>
+      </button>
+    </div>
+  </div>
+  <!-- Panel menu mobile: disembunyikan (max-height:0) lalu di-expand via class
+       "menu-open" saat burger diklik — pakai transisi max-height, bukan hidden
+       langsung, supaya ada animasi buka/tutup yang halus. -->
+  <nav id="mobileMenu" class="md:hidden mobile-menu overflow-hidden border-t border-[var(--line)] bg-paper-50">
+    <div class="max-w-6xl mx-auto px-6 py-4 flex flex-col gap-1 text-sm font-medium text-ink-700">
+      <a href="#fitur" class="mobile-nav-link px-2 py-2.5 rounded-md hover:bg-paper-100 hover:text-ink-900">Fitur</a>
+      <a href="#akademik" class="mobile-nav-link px-2 py-2.5 rounded-md hover:bg-paper-100 hover:text-ink-900">Akademik</a>
+      <a href="#memory" class="mobile-nav-link px-2 py-2.5 rounded-md hover:bg-paper-100 hover:text-ink-900">Memory</a>
+      <a href="#cara-kerja" class="mobile-nav-link px-2 py-2.5 rounded-md hover:bg-paper-100 hover:text-ink-900">Cara Kerja</a>
+      <a href="pages/login.html" class="mobile-nav-link px-2 py-2.5 rounded-md hover:bg-paper-100 hover:text-ink-900 sm:hidden">Masuk</a>
+    </div>
+  </nav>
+</header>
+
+
+<!-- ============ HERO ============ -->
+<!-- lg:min-h-[calc(100vh-4rem)] -> tinggi hero = tinggi layar dikurangi navbar (4rem/h-16),
+     supaya di desktop hero memenuhi satu layar penuh tanpa perlu scroll dulu. -->
+<section class="relative overflow-hidden paper-texture lg:min-h-[calc(100vh-4rem)] flex items-center">
+  <div class="hero-glow" aria-hidden="true"></div>
+  <div class="max-w-6xl mx-auto px-6 py-16 lg:py-20 grid lg:grid-cols-2 gap-14 items-center">
+    <div>
+      <span class="inline-flex items-center gap-2 layer-badge text-sage-500 mb-6">
+        <i data-lucide="sparkles" class="w-3.5 h-3.5 spin-slow"></i> WORKSPACE DOKUMEN + AI
+      </span>
+      <h1 class="font-display text-4xl sm:text-5xl leading-[1.08] font-semibold text-ink-900">
+        Dokumenmu dibaca, <span class="highlight-mark">dipahami</span>, dan dikerjain bareng AI.<span class="blink-cursor"></span>
+      </h1>
+      <p class="mt-6 text-lg text-ink-700 max-w-lg">
+        Macca.Ai itu ruang kerja buat skripsi, jurnal, laporan, sampai proposal. Bedanya sama chatbot
+        biasa? Macca inget konteks obrolan, proyek, dan gaya kerjamu — jadi kamu nggak perlu jelasin ulang dari nol tiap kali chat.
+      </p>
+      <div class="mt-8 flex flex-wrap items-center gap-4">
+        <a href="pages/register.html" class="btn-ink px-6 py-3.5 rounded-md text-sm font-semibold inline-flex items-center gap-2 group">
+          Mulai Gratis Sekarang <i data-lucide="arrow-right" class="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1"></i>
+        </a>
+        <a href="#cara-kerja" class="px-6 py-3.5 rounded-md text-sm font-semibold border border-ink-900/20 text-ink-900 hover:bg-paper-100 inline-flex items-center gap-2 group transition-colors">
+          <i data-lucide="play-circle" class="w-4 h-4 transition-transform duration-300 group-hover:scale-110"></i> Lihat cara kerjanya
+        </a>
+      </div>
+      <p class="mt-5 text-xs text-ink-500 font-mono">Gratis buat mulai · nggak perlu kartu kredit</p>
+    </div>
+
+    <!-- Signature visual: stack dokumen dengan highlight & sticky note, tiap kartu "mengambang" pelan -->
+    <div class="relative h-[420px] hidden sm:block" id="preview">
+      <div class="doc-card group float-card absolute top-0 left-6 w-[280px] p-5 rotate-[-4deg]" style="animation-delay:0s">
+        <p class="text-xs font-mono text-ink-500 mb-2">Skripsi_BAB1.docx</p>
+        <p class="text-sm leading-relaxed text-charcoal-900">Penelitian ini bertujuan untuk menganalisis <span class="highlight-mark">pengaruh literasi digital</span> terhadap...</p>
+      </div>
+      <div class="doc-card tape-corner group float-card absolute top-16 right-0 w-[260px] p-5 rotate-[3deg] bg-sage-100/60" style="animation-delay:1.2s">
+        <p class="text-xs font-mono text-sage-500 mb-2 flex items-center gap-1"><i data-lucide="brain" class="w-3.5 h-3.5 transition-transform duration-300 group-hover:scale-125 group-hover:-rotate-12"></i> Project Memory</p>
+        <p class="text-sm text-ink-900">Metodologi: kuantitatif, survei 120 responden.</p>
+      </div>
+      <div class="doc-card group float-card absolute bottom-4 left-16 w-[300px] p-5 rotate-[2deg] shadow-xl" style="animation-delay:2.4s">
+        <p class="text-xs font-mono text-amber-600 mb-2 flex items-center gap-1"><i data-lucide="bot" class="w-3.5 h-3.5 transition-transform duration-300 group-hover:scale-125 group-hover:rotate-12"></i> Macca</p>
+        <p class="text-sm text-charcoal-900">Berdasarkan Jurnal-2.pdf hal. 14, temuanmu konsisten dengan penelitian Rahmawati (2022)...</p>
+        <div class="mt-3 flex gap-1"><span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ FEATURE OVERVIEW ============ -->
+<section id="fitur" class="max-w-6xl mx-auto px-6 py-24">
+  <div class="max-w-xl reveal">
+    <span class="layer-badge text-clay-500">FITUR UTAMA</span>
+    <h2 class="font-display text-3xl sm:text-4xl font-semibold text-ink-900 mt-4">Satu tempat buat semua urusan dokumenmu.</h2>
+  </div>
+  <div class="mt-12 grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+    <div class="reveal doc-card p-6 group"><i data-lucide="message-square-text" class="w-6 h-6 text-ink-900 transition-all duration-300 group-hover:scale-125 group-hover:-rotate-6 group-hover:text-lime-500"></i><h3 class="font-display text-lg font-semibold mt-3">AI Chat Kontekstual</h3><p class="text-sm text-ink-700 mt-2">Ngobrol sama AI yang inget proyek dan dokumen yang lagi kamu kerjain.</p></div>
+    <div class="reveal doc-card p-6 group"><i data-lucide="file-search" class="w-6 h-6 text-ink-900 transition-all duration-300 group-hover:scale-125 group-hover:-rotate-6 group-hover:text-lime-500"></i><h3 class="font-display text-lg font-semibold mt-3">Analisis PDF & DOCX</h3><p class="text-sm text-ink-700 mt-2">Upload dokumen, tanya apa aja soal isinya, langsung dapet jawaban lengkap sama halamannya.</p></div>
+    <div class="reveal doc-card p-6 group"><i data-lucide="graduation-cap" class="w-6 h-6 text-ink-900 transition-all duration-300 group-hover:scale-125 group-hover:-rotate-6 group-hover:text-lime-500"></i><h3 class="font-display text-lg font-semibold mt-3">Asisten Akademik</h3><p class="text-sm text-ink-700 mt-2">Bantu proses nulis skripsi, jurnal, sampai proposal per bab, biar lebih terarah.</p></div>
+    <div class="reveal doc-card p-6 group"><i data-lucide="calculator" class="w-6 h-6 text-ink-900 transition-all duration-300 group-hover:scale-125 group-hover:-rotate-6 group-hover:text-lime-500"></i><h3 class="font-display text-lg font-semibold mt-3">RAB Assistant</h3><p class="text-sm text-ink-700 mt-2">Hitung anggaran beneran akurat pakai rumus pasti, bukan kira-kira ala AI.</p></div>
+    <div class="reveal doc-card p-6 group"><i data-lucide="folder-kanban" class="w-6 h-6 text-ink-900 transition-all duration-300 group-hover:scale-125 group-hover:-rotate-6 group-hover:text-lime-500"></i><h3 class="font-display text-lg font-semibold mt-3">Project Workspace</h3><p class="text-sm text-ink-700 mt-2">Semua chat, dokumen, dan catatan ngumpul rapi dalam satu proyek.</p></div>
+    <div class="reveal doc-card p-6 group"><i data-lucide="shield-check" class="w-6 h-6 text-ink-900 transition-all duration-300 group-hover:scale-125 group-hover:-rotate-6 group-hover:text-lime-500"></i><h3 class="font-display text-lg font-semibold mt-3">AI Reviewer</h3><p class="text-sm text-ink-700 mt-2">Jawaban penting dicek ulang dulu sebelum sampai ke kamu, biar makin bisa dipercaya.</p></div>
+  </div>
+</section>
+
+<!-- ============ ACADEMIC FEATURES ============ -->
+<section id="akademik" class="bg-paper-100 text-ink-900 scanlines border-y border-[var(--line)]">
+  <div class="max-w-6xl mx-auto px-6 py-24 grid lg:grid-cols-2 gap-14 items-center">
+    <div class="reveal">
+      <span class="layer-badge text-amber-500">BUAT ANAK KULIAH & DOSEN</span>
+      <h2 class="font-display text-3xl sm:text-4xl font-semibold mt-4">Teman diskusi buat nulis skripsi & jurnal.</h2>
+      <p class="mt-5 text-ink-500/90 text-[15px] leading-relaxed max-w-md" style="color:#C7D0E3">
+        Macca bantu kamu mikirin rumusan masalah, ngerangkum landasan teori, sampai review draft
+        per bab — berdasarkan dokumen yang kamu upload sendiri. Anggap aja partner diskusi buat
+        mempercepat proses nulis, bukan pengganti bimbingan dosen.
+      </p>
+      <ul class="mt-6 space-y-3 text-sm">
+        <li class="flex items-center gap-2 group"><i data-lucide="check" class="w-4 h-4 text-amber-500 transition-transform duration-300 group-hover:scale-125"></i> Bantu mikirin kerangka & hipotesis awal</li>
+        <li class="flex items-center gap-2 group"><i data-lucide="check" class="w-4 h-4 text-amber-500 transition-transform duration-300 group-hover:scale-125"></i> Bantu review draft & cek konsistensi antar bab</li>
+        <li class="flex items-center gap-2 group"><i data-lucide="check" class="w-4 h-4 text-amber-500 transition-transform duration-300 group-hover:scale-125"></i> Bantu cari referensi & research gap</li>
+      </ul>
+    </div>
+    <div class="reveal doc-card bg-paper-50 text-charcoal-900 p-6 rotate-[-1deg]">
+      <p class="text-xs font-mono text-ink-500 mb-3">BAB II — Landasan Teori</p>
+      <p class="text-sm leading-relaxed">Menurut <span class="highlight-mark">Sugiyono (2021)</span>, literasi digital didefinisikan sebagai kemampuan individu dalam mengakses, memahami...</p>
+      <div class="mt-4 pt-4 divider-dashed text-xs font-mono text-sage-500 flex items-center gap-1"><i data-lucide="link-2" class="w-3.5 h-3.5"></i> Sumber: Jurnal-1.pdf, hal. 22</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ DOCUMENT INTELLIGENCE ============ -->
+<section class="max-w-6xl mx-auto px-6 py-24">
+  <div class="grid lg:grid-cols-2 gap-14 items-center">
+    <div class="reveal order-2 lg:order-1 grid grid-cols-2 gap-4">
+      <div class="doc-card p-5 group"><i data-lucide="file-type" class="w-5 h-5 text-ink-900 transition-all duration-300 group-hover:scale-125 group-hover:text-lime-500"></i><p class="text-sm font-semibold mt-2">PDF & DOCX</p></div>
+      <div class="doc-card p-5 group"><i data-lucide="table" class="w-5 h-5 text-ink-900 transition-all duration-300 group-hover:scale-125 group-hover:text-lime-500"></i><p class="text-sm font-semibold mt-2">XLSX</p></div>
+      <div class="doc-card p-5 group"><i data-lucide="quote" class="w-5 h-5 text-ink-900 transition-all duration-300 group-hover:scale-125 group-hover:text-lime-500"></i><p class="text-sm font-semibold mt-2">Sitasi Halaman</p></div>
+      <div class="doc-card p-5 group"><i data-lucide="scan-search" class="w-5 h-5 text-ink-900 transition-all duration-300 group-hover:scale-125 group-hover:text-lime-500"></i><p class="text-sm font-semibold mt-2">RAG Pencarian</p></div>
+    </div>
+    <div class="reveal order-1 lg:order-2">
+      <span class="layer-badge text-sage-500">DOCUMENT INTELLIGENCE</span>
+      <h2 class="font-display text-3xl sm:text-4xl font-semibold text-ink-900 mt-4">AI yang beneran baca dokumenmu, bukan asal nebak.</h2>
+      <p class="mt-5 text-ink-700 max-w-md">Tiap jawaban yang nyangkut dokumenmu selalu dikasih referensi halaman dan bagiannya, jadi kamu bisa cek ulang sendiri kalau perlu.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ PERSONAL MEMORY ============ -->
+<section id="memory" class="bg-paper-100 border-y border-[var(--line)]">
+  <div class="max-w-6xl mx-auto px-6 py-24">
+    <div class="max-w-xl reveal">
+      <span class="layer-badge text-clay-500">PERSONAL MEMORY</span>
+      <h2 class="font-display text-3xl sm:text-4xl font-semibold text-ink-900 mt-4">Tiga lapis ingatan, biar obrolan makin nyambung.</h2>
+      <p class="mt-4 text-ink-700">Nggak semua aktivitas disimpan kok — cuma yang bener-bener berguna, dan kendalinya tetap sepenuhnya di tangan kamu.</p>
+    </div>
+    <div class="mt-12 grid md:grid-cols-3 gap-5">
+      <div class="reveal doc-card p-6">
+        <span class="layer-badge text-ink-500">LAYER 01</span>
+        <h3 class="font-display text-lg font-semibold mt-3">Percakapan Aktif</h3>
+        <p class="text-sm text-ink-700 mt-2">Inget konteks obrolan selama satu sesi chat berlangsung.</p>
+      </div>
+      <div class="reveal doc-card p-6">
+        <span class="layer-badge text-sage-500">LAYER 02</span>
+        <h3 class="font-display text-lg font-semibold mt-3">Project Memory</h3>
+        <p class="text-sm text-ink-700 mt-2">Judul skripsi, metodologi, gaya dokumen — semua nempel rapi di proyeknya.</p>
+      </div>
+      <div class="reveal doc-card p-6">
+        <span class="layer-badge text-amber-600">LAYER 03</span>
+        <h3 class="font-display text-lg font-semibold mt-3">Personal Memory</h3>
+        <p class="text-sm text-ink-700 mt-2">Gaya nulis & bahasa favoritmu kebawa ke semua proyek. Mau diintip, diedit, atau dihapus? Bebas, kapan aja.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ WORKFLOW EXPLANATION ============ -->
+<section id="cara-kerja" class="max-w-6xl mx-auto px-6 py-24">
+  <div class="max-w-xl reveal">
+    <span class="layer-badge text-ink-500">CARA KERJA</span>
+    <h2 class="font-display text-3xl sm:text-4xl font-semibold text-ink-900 mt-4">Tiap pesan kamu diproses lewat alur yang jelas dan rapi.</h2>
+  </div>
+  <div class="mt-12 grid sm:grid-cols-2 lg:grid-cols-4 gap-5 reveal">
+    <div class="doc-card p-5 group"><p class="font-mono text-xs text-ink-500 transition-colors duration-300 group-hover:text-lime-500">01</p><p class="text-sm font-semibold mt-2">Kirim Pesan</p></div>
+    <div class="doc-card p-5 group"><p class="font-mono text-xs text-ink-500 transition-colors duration-300 group-hover:text-lime-500">02</p><p class="text-sm font-semibold mt-2">Ambil Konteks & Memory</p></div>
+    <div class="doc-card p-5 group"><p class="font-mono text-xs text-ink-500 transition-colors duration-300 group-hover:text-lime-500">03</p><p class="text-sm font-semibold mt-2">Pilih Model Paling Pas</p></div>
+    <div class="doc-card p-5 group"><p class="font-mono text-xs text-ink-500 transition-colors duration-300 group-hover:text-lime-500">04</p><p class="text-sm font-semibold mt-2">Cek Kualitas, Baru Dikirim</p></div>
+  </div>
+</section>
+
+<!-- ============ USE CASES ============ -->
+<section class="bg-paper-100 border-y border-[var(--line)]">
+  <div class="max-w-6xl mx-auto px-6 py-24">
+    <div class="max-w-xl reveal">
+      <span class="layer-badge text-clay-500">BUAT SIAPA AJA</span>
+      <h2 class="font-display text-3xl sm:text-4xl font-semibold text-ink-900 mt-4">Cocok buat siapa aja yang sehari-hari bergelut sama dokumen.</h2>
+    </div>
+    <div class="mt-10 flex flex-wrap gap-3 reveal">
+      <span class="chip-pop px-4 py-2 rounded-full bg-paper-100 border border-[var(--line)] text-sm font-medium cursor-default">Mahasiswa</span>
+      <span class="chip-pop px-4 py-2 rounded-full bg-paper-100 border border-[var(--line)] text-sm font-medium cursor-default">Dosen</span>
+      <span class="chip-pop px-4 py-2 rounded-full bg-paper-100 border border-[var(--line)] text-sm font-medium cursor-default">Peneliti</span>
+      <span class="chip-pop px-4 py-2 rounded-full bg-paper-100 border border-[var(--line)] text-sm font-medium cursor-default">Pekerja</span>
+      <span class="chip-pop px-4 py-2 rounded-full bg-paper-100 border border-[var(--line)] text-sm font-medium cursor-default">Freelancer</span>
+      <span class="chip-pop px-4 py-2 rounded-full bg-paper-100 border border-[var(--line)] text-sm font-medium cursor-default">Pemilik Usaha</span>
+    </div>
+  </div>
+</section>
+
+<!-- ============ CTA ============ -->
+<section class="max-w-6xl mx-auto px-6 pb-24">
+  <div class="doc-card bg-lime-500 text-paper-50 p-10 sm:p-14 text-center reveal">
+    <h2 class="font-display text-3xl sm:text-4xl font-semibold">Yuk, kelola dokumenmu bareng AI yang beneran ngerti.</h2>
+    <p class="mt-3 text-[15px] text-paper-50/80">Gratis buat mulai. Nggak pakai kartu kredit, nggak pakai ribet.</p>
+    <a href="pages/register.html" class="btn-ink inline-flex items-center gap-2 mt-7 px-7 py-3.5 rounded-md text-sm font-semibold group">
+      Bikin Workspace Gratis <i data-lucide="arrow-right" class="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1"></i>
+    </a>
+  </div>
+</section>
+
+<!-- ============ FOOTER ============ -->
+<footer class="border-t border-[var(--line)]">
+  <div class="max-w-6xl mx-auto px-6 py-12 flex flex-col sm:flex-row items-center justify-between gap-6">
+    <div class="flex items-center gap-2 font-display text-lg font-semibold text-ink-900">
+      <span class="w-6 h-6 rounded-sm bg-lime-500 text-paper-50 grid place-items-center font-pixel text-[7px]">M</span>
+      Macca.Ai
+    </div>
+    <p class="text-xs text-ink-500 font-mono">© 2026 Macca.Ai — Nemenin Kamu Ngerjain Dokumen, Bareng AI.</p>
+    <div class="flex gap-5 text-sm text-ink-700">
+      <a href="pages/login.html" class="hover:text-ink-900">Masuk</a>
+      <a href="pages/register.html" class="hover:text-ink-900">Daftar</a>
+    </div>
+  </div>
+</footer>
+
+<!-- ============ BACK TO TOP ============ -->
+<!-- Disembunyikan (opacity/translate) sampai user scroll melewati ambang tertentu,
+     dikontrol lewat class "show-btt" di script bawah supaya transisinya halus,
+     bukan muncul/hilang tiba-tiba lewat hidden. -->
+<button type="button" id="backToTopBtn" aria-label="Kembali ke atas"
+  class="back-to-top fixed bottom-6 right-6 z-40 w-11 h-11 grid place-items-center rounded-full bg-lime-500 text-paper-50 shadow-lg hover:bg-lime-600 hover:-translate-y-1 transition-all">
+  <i data-lucide="arrow-up" class="w-5 h-5"></i>
+</button>
+
+<script>
+  lucide.createIcons();
+</script>
+<script>
+  // Reveal-on-scroll, ditulis sebagai script biasa (bukan type="module") supaya
+  // tetap jalan walau file dibuka langsung lewat file:// atau modul gagal dimuat.
+  (function () {
+    var els = document.querySelectorAll('.reveal');
+    function show(el) { el.classList.add('in-view'); }
+
+    if (!('IntersectionObserver' in window) || els.length === 0) {
+      els.forEach(show);
+      return;
+    }
+
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (entry.isIntersecting) {
+          show(entry.target);
+          io.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.15 });
+
+    els.forEach(function (el) { io.observe(el); });
+
+    // Jaring pengaman: kalau karena sebab apapun ada elemen yang gagal ke-trigger
+    // observer-nya (mis. tersembunyi di tab tidak aktif saat load), paksa tampil.
+    window.setTimeout(function () {
+      document.querySelectorAll('.reveal:not(.in-view)').forEach(show);
+    }, 1500);
+  })();
+</script>
+<script>
+  // Tombol "kembali ke atas": muncul setelah scroll > 1 tinggi layar, scroll
+  // halus ke atas saat diklik (respects prefers-reduced-motion lewat CSS scroll-behavior).
+  (function () {
+    var btn = document.getElementById('backToTopBtn');
+    if (!btn) return;
+    function toggleBtn() {
+      if (window.scrollY > window.innerHeight * 0.6) btn.classList.add('show-btt');
+      else btn.classList.remove('show-btt');
+    }
+    window.addEventListener('scroll', toggleBtn, { passive: true });
+    toggleBtn();
+    btn.addEventListener('click', function () {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  })();
+</script>
+<script>
+  // Burger menu mobile: toggle panel + ganti ikon menu <-> x, dan otomatis
+  // menutup lagi begitu salah satu link di dalamnya diklik (biar tidak nyangkut
+  // terbuka setelah user pindah section).
+  (function () {
+    var btn = document.getElementById('mobileMenuBtn');
+    var menu = document.getElementById('mobileMenu');
+    var iconOpen = document.getElementById('mobileMenuIconOpen');
+    var iconClose = document.getElementById('mobileMenuIconClose');
+    if (!btn || !menu) return;
+
+    function setOpen(open) {
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      menu.classList.toggle('menu-open', open);
+      iconOpen.classList.toggle('hidden', open);
+      iconClose.classList.toggle('hidden', !open);
+    }
+
+    btn.addEventListener('click', function () {
+      setOpen(btn.getAttribute('aria-expanded') !== 'true');
+    });
+    menu.querySelectorAll('.mobile-nav-link').forEach(function (link) {
+      link.addEventListener('click', function () { setOpen(false); });
+    });
+  })();
+</script>
+</body>
+</html>

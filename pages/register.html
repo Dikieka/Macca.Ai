@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Daftar — Macca.Ai</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Press+Start+2P&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<link rel="stylesheet" href="../assets/css/style.css" />
+<link rel="icon" type="image/x-icon" href="../assets/icons/favicon.ico" />
+<link rel="icon" type="image/png" sizes="32x32" href="../assets/icons/favicon-32x32.png" />
+<link rel="icon" type="image/png" sizes="16x16" href="../assets/icons/favicon-16x16.png" />
+<link rel="apple-touch-icon" sizes="180x180" href="../assets/icons/apple-touch-icon.png" />
+<link rel="manifest" href="../assets/icons/site.webmanifest" />
+<script>
+  tailwind.config = {
+    theme: { extend: {
+      colors: { ink:{900:'#EDF0F7',700:'#B7BECF',500:'#7B8298'}, paper:{50:'#0A0C11',100:'#14161F',200:'#20232F'}, amber:{500:'#FFC145',600:'#E0A62E'}, sage:{500:'#3CE6A6',100:'#10261F'}, clay:{500:'#FF5C7A'}, lime:{500:'#C6FF3D',600:'#A6DE22'} },
+      fontFamily: { display:['Space Grotesk','sans-serif'], sans:['Inter','system-ui','sans-serif'], mono:['JetBrains Mono','monospace'], pixel:['"Press Start 2P"','monospace'] }
+    }}
+  }
+</script>
+</head>
+<body class="bg-paper-50 text-[var(--charcoal-900)] min-h-screen grid lg:grid-cols-2">
+
+  <div class="auth-panel-left hidden lg:flex lg:h-screen lg:sticky lg:top-0 flex-col justify-between bg-paper-100 text-ink-900 p-12 paper-texture scanlines relative overflow-hidden">
+    <div class="auth-blob auth-blob-1"></div>
+    <div class="auth-blob auth-blob-2"></div>
+    <div class="auth-blob auth-blob-3"></div>
+
+    <a href="../index.html" class="relative z-10 flex items-center gap-2 font-display text-xl font-semibold">
+      <span class="w-7 h-7 rounded-sm bg-amber-500 text-paper-50 grid place-items-center font-pixel text-[8px]">M</span>
+      Macca.Ai
+    </a>
+
+    <div class="relative z-10">
+      <div class="auth-mini-chat doc-card p-4 max-w-xs mb-6" style="animation-delay:-2.5s">
+        <div class="flex items-center gap-2 mb-3">
+          <span class="layer-badge text-lime-500">Proyek</span>
+          <span class="layer-badge text-amber-500">Percakapan</span>
+          <span class="layer-badge text-sage-500">Memory</span>
+        </div>
+        <p class="font-display text-3xl leading-snug font-medium">Tiga lapis konteks: percakapan, proyek, dan preferensimu — semua dalam kendalimu.</p>
+      </div>
+      <p class="text-xs font-mono" style="color:#8092B0">Gratis untuk mulai · Tanpa kartu kredit</p>
+    </div>
+
+    <p class="relative z-10 text-xs font-mono" style="color:#8092B0">Your Documents. Your Ideas. One Intelligent Workspace.</p>
+  </div>
+
+  <div class="flex items-center justify-center p-6 sm:p-12">
+    <div class="w-full max-w-sm">
+      <a href="../index.html" class="auth-reveal lg:hidden flex items-center gap-2 font-display text-xl font-semibold text-ink-900 mb-10" style="--d:0s">
+        <span class="w-7 h-7 rounded-sm bg-lime-500 text-paper-50 grid place-items-center font-pixel text-[8px]">M</span> Macca.Ai
+      </a>
+
+      <h1 class="auth-reveal font-display text-2xl font-semibold text-ink-900" style="--d:.05s">Buat workspace-mu</h1>
+      <p class="auth-reveal text-sm text-ink-700 mt-2" style="--d:.1s">Gratis, siap dipakai dalam satu menit.</p>
+
+      <div class="auth-reveal mt-6" style="--d:.15s">
+        <div id="googleBtnSkeleton" class="google-skeleton"></div>
+        <div id="googleBtn" style="min-height:44px" class="hidden"></div>
+        <p id="googleNotice" class="auth-notice mt-2 hidden">
+          <i data-lucide="info" class="w-3.5 h-3.5"></i>
+          <span id="googleNoticeText">Login Google belum dikonfigurasi.</span>
+        </p>
+      </div>
+
+      <div class="auth-reveal my-6 flex items-center gap-3 text-xs text-ink-500 font-mono" style="--d:.2s">
+        <div class="flex-1 border-t border-[var(--line)]"></div> ATAU <div class="flex-1 border-t border-[var(--line)]"></div>
+      </div>
+
+      <form id="registerForm" class="space-y-4" novalidate>
+        <div class="auth-reveal auth-field" style="--d:.25s">
+          <label for="fullName" class="text-sm font-medium text-ink-900">Nama lengkap</label>
+          <input id="fullName" type="text" required autocomplete="name"
+            class="mt-1.5 w-full rounded-md border border-[var(--line)] bg-paper-100 px-3.5 py-2.5 text-sm focus:border-lime-500 focus:ring-1 focus:ring-lime-500 outline-none"
+            placeholder="Nama kamu" />
+          <p class="error-text text-xs text-clay-500 mt-1 hidden"></p>
+        </div>
+        <div class="auth-reveal auth-field" style="--d:.3s">
+          <label for="email" class="text-sm font-medium text-ink-900">Email</label>
+          <input id="email" type="email" required autocomplete="email"
+            class="mt-1.5 w-full rounded-md border border-[var(--line)] bg-paper-100 px-3.5 py-2.5 text-sm focus:border-lime-500 focus:ring-1 focus:ring-lime-500 outline-none"
+            placeholder="nama@kampus.ac.id" />
+          <p class="error-text text-xs text-clay-500 mt-1 hidden"></p>
+        </div>
+        <div class="auth-reveal auth-field" style="--d:.35s">
+          <label for="password" class="text-sm font-medium text-ink-900">Kata sandi</label>
+          <div class="relative">
+            <input id="password" type="password" required autocomplete="new-password" minlength="8"
+              class="mt-1.5 w-full rounded-md border border-[var(--line)] bg-paper-100 px-3.5 py-2.5 pr-10 text-sm focus:border-lime-500 focus:ring-1 focus:ring-lime-500 outline-none"
+              placeholder="Minimal 8 karakter" />
+            <button type="button" class="pw-toggle" data-target="password" aria-label="Tampilkan kata sandi">
+              <i data-lucide="eye" class="w-4 h-4 pointer-events-none"></i>
+            </button>
+          </div>
+          <div class="pw-strength" id="pwStrength" data-level="0"><i></i><i></i><i></i></div>
+          <span class="pw-strength-label" id="pwStrengthLabel"></span>
+          <p class="error-text text-xs text-clay-500 mt-1 hidden"></p>
+        </div>
+        <label class="auth-reveal flex items-start gap-2 text-xs text-ink-700" style="--d:.4s">
+          <input id="terms" type="checkbox" required class="mt-0.5" />
+          Saya menyetujui Ketentuan Layanan & Kebijakan Privasi Macca.Ai.
+        </label>
+        <button id="submitBtn" type="submit" class="auth-reveal btn-ink w-full rounded-md py-3 text-sm font-semibold" style="--d:.45s">Buat Akun</button>
+      </form>
+
+      <p class="auth-reveal text-sm text-ink-700 mt-8 text-center" style="--d:.5s">
+        Sudah punya akun? <a href="login.html" class="font-semibold text-ink-900 hover:text-amber-600 transition-colors">Masuk</a>
+      </p>
+    </div>
+  </div>
+
+<script type="module">
+  import { CONFIG, isGoogleClientConfigured } from "../assets/js/lib/config.js";
+  import { callApi, ApiError } from "../assets/js/lib/api.js";
+  import { setSession, redirectIfAuthed } from "../assets/js/lib/auth.js";
+  import { showToast, setLoading } from "../assets/js/lib/state.js";
+
+  redirectIfAuthed();
+  lucide.createIcons();
+
+  const form = document.getElementById("registerForm");
+  const submitBtn = document.getElementById("submitBtn");
+
+  function fieldError(id, msg) {
+    const input = document.getElementById(id);
+    const wrap = input.closest(".auth-field");
+    const err = wrap.querySelector(".error-text");
+    if (msg) {
+      input.classList.add("border-clay-500");
+      err.textContent = msg;
+      err.classList.remove("hidden");
+      wrap.classList.remove("auth-shake");
+      void wrap.offsetWidth;
+      wrap.classList.add("auth-shake");
+    } else {
+      input.classList.remove("border-clay-500");
+      err.classList.add("hidden");
+    }
+  }
+
+  // ---- Toggle lihat/sembunyikan kata sandi ----
+  document.querySelectorAll(".pw-toggle").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const input = document.getElementById(btn.dataset.target);
+      const showing = input.type === "text";
+      input.type = showing ? "password" : "text";
+      btn.innerHTML = showing
+        ? '<i data-lucide="eye" class="w-4 h-4 pointer-events-none"></i>'
+        : '<i data-lucide="eye-off" class="w-4 h-4 pointer-events-none"></i>';
+      lucide.createIcons();
+    });
+  });
+
+  // ---- Indikator kekuatan kata sandi (heuristik ringan, murni kosmetik) ----
+  const pwInput = document.getElementById("password");
+  const pwStrength = document.getElementById("pwStrength");
+  const pwStrengthLabel = document.getElementById("pwStrengthLabel");
+  pwInput.addEventListener("input", () => {
+    const v = pwInput.value;
+    let score = 0;
+    if (v.length >= 8) score++;
+    if (/[A-Z]/.test(v) && /[a-z]/.test(v)) score++;
+    if (/\d/.test(v) || /[^A-Za-z0-9]/.test(v)) score++;
+    if (!v) score = 0;
+    pwStrength.dataset.level = String(score);
+    pwStrengthLabel.textContent = v ? ["Terlalu pendek", "Lemah", "Cukup", "Kuat"][score] : "";
+  });
+
+  async function goToChat() {
+    submitBtn?.classList.add("is-success", "btn-success-pop");
+    if (submitBtn) submitBtn.innerHTML = '<span class="inline-flex items-center gap-2 justify-center"><i data-lucide="check" class="w-4 h-4"></i> Berhasil, mengalihkan…</span>';
+    lucide.createIcons();
+    await new Promise((r) => setTimeout(r, 450));
+    window.location.href = "chat.html";
+  }
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const fullName = document.getElementById("fullName").value.trim();
+    const email = document.getElementById("email").value.trim();
+    const password = document.getElementById("password").value;
+    const terms = document.getElementById("terms").checked;
+    let valid = true;
+
+    if (fullName.length < 2) { fieldError("fullName", "Masukkan nama lengkap."); valid = false; } else fieldError("fullName");
+    if (!/^\S+@\S+\.\S+$/.test(email)) { fieldError("email", "Masukkan email yang valid."); valid = false; } else fieldError("email");
+    if (password.length < 8) { fieldError("password", "Kata sandi minimal 8 karakter."); valid = false; } else fieldError("password");
+    if (!terms) { showToast("Setujui ketentuan layanan terlebih dahulu.", "error"); valid = false; }
+    if (!valid) return;
+
+    setLoading(submitBtn, true, "Membuat akun…");
+    try {
+      const data = await callApi("register", { fullName, email, password }, { auth: false });
+      setSession({ token: data.token, user: data.user });
+      showToast("Akun berhasil dibuat. Selamat datang!", "success");
+      await goToChat();
+    } catch (err) {
+      const msg = err instanceof ApiError ? err.message : "Gagal mendaftar. Coba lagi.";
+      showToast(msg, "error");
+    } finally {
+      setLoading(submitBtn, false);
+    }
+  });
+
+  // ---- Google Sign-In ----
+  const googleBtnEl = document.getElementById("googleBtn");
+  const skeletonEl = document.getElementById("googleBtnSkeleton");
+  const noticeEl = document.getElementById("googleNotice");
+  const noticeTextEl = document.getElementById("googleNoticeText");
+
+  function showGoogleNotice(text) {
+    skeletonEl.classList.add("hidden");
+    googleBtnEl.classList.add("hidden");
+    noticeTextEl.textContent = text;
+    noticeEl.classList.remove("hidden");
+  }
+
+  function waitForGoogleIdentity(timeoutMs = 8000) {
+    return new Promise((resolve, reject) => {
+      const start = Date.now();
+      (function poll() {
+        if (window.google?.accounts?.id) return resolve();
+        if (Date.now() - start > timeoutMs) return reject(new Error("timeout"));
+        setTimeout(poll, 100);
+      })();
+    });
+  }
+
+  async function handleGoogleCredential(response) {
+    try {
+      const data = await callApi("googleLogin", { idToken: response.credential }, { auth: false });
+      setSession({ token: data.token, user: data.user });
+      showToast(`Selamat datang, ${data.user.fullName}!`, "success");
+      await goToChat();
+    } catch (err) {
+      showToast(err instanceof ApiError ? err.message : "Login Google gagal.", "error");
+    }
+  }
+
+  async function setupGoogleSignIn() {
+    if (!isGoogleClientConfigured()) {
+      showGoogleNotice("Login Google belum dikonfigurasi — admin perlu mengisi GOOGLE_CLIENT_ID asli di assets/js/lib/config.js (lihat README bagian 3).");
+      return;
+    }
+    try {
+      await waitForGoogleIdentity();
+      google.accounts.id.initialize({
+        client_id: CONFIG.GOOGLE_CLIENT_ID,
+        callback: handleGoogleCredential,
+        auto_select: false,
+        itp_support: true,
+      });
+
+      // PERBAIKAN mobile: dulu width dipatok 360px tetap. Di HP yang lebih
+      // sempit dari itu (banyak — layar umum ~360-390px, dikurangi padding
+      // kiri-kanan panel form), tombol Google jadi lebih lebar dari body dan
+      // memaksa SELURUH halaman bisa digeser kiri-kanan. Sekarang lebarnya
+      // dihitung dari lebar kontainer form yang sebenarnya (elemen ini
+      // sendiri tidak punya lebar sebelum tombol dirender, makanya diukur
+      // dari wrapper terdekat yang sudah punya lebar pasti), dibatasi supaya
+      // tidak lebih kecil dari batas minimum Google (200) atau lebih besar
+      // dari desain awal (360).
+      function renderGoogleButton() {
+        const containerWidth = googleBtnEl.parentElement.clientWidth || 360;
+        const width = Math.max(200, Math.min(360, Math.floor(containerWidth)));
+        googleBtnEl.innerHTML = "";
+        google.accounts.id.renderButton(googleBtnEl, {
+          theme: "outline", size: "large", width, text: "signup_with", shape: "pill", logo_alignment: "left",
+        });
+      }
+
+      renderGoogleButton();
+      skeletonEl.classList.add("hidden");
+      googleBtnEl.classList.remove("hidden");
+
+      // Render ulang saat layar di-resize/rotasi (di-debounce dikit) supaya
+      // tombol tetap pas kalau user putar HP dari portrait ke landscape, dsb.
+      let resizeTimer;
+      window.addEventListener("resize", () => {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(renderGoogleButton, 200);
+      });
+    } catch (err) {
+      showGoogleNotice("Tombol Google Sign-In gagal dimuat. Cek koneksi internet atau nonaktifkan pemblokir skrip (ad-blocker), lalu muat ulang halaman.");
+    }
+  }
+
+  setupGoogleSignIn();
+</script>
+</body>
+</html>
