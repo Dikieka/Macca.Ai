@@ -4,9 +4,11 @@
 import { requireAuth, logout } from "../lib/auth.js";
 import { callApi, ApiError } from "../lib/api.js";
 import { showToast, setLoading } from "../lib/state.js";
-import { escapeHtml, formatRelativeTime, markActiveSidebarLink, applyRoleBasedNav, fileIconFor, renderFormattedText } from "../lib/render.js";
+import { escapeHtml, formatRelativeTime, markActiveSidebarLink, applyRoleBasedNav, fileIconFor, renderFormattedText, renderMarkdownToWordHtml } from "../lib/render.js";
 import { prepareFileForUpload, formatBytes } from "../lib/upload.js";
 import { initSidebarResize, initSidebarMobile } from "../lib/sidebar.js";
+import { getCachedChatHistory, setCachedChatHistory } from "../lib/historyCache.js";
+import { getCached, setCached } from "../lib/apiCache.js";
 
 const session = requireAuth();
 let currentChatId = new URLSearchParams(window.location.search).get("chatId");
@@ -33,6 +35,21 @@ let selectedModel = localStorage.getItem("macca_preferred_model") || "";
 // dalam satu waktu (composer, edit, ATAU regenerate) — lihat beginGeneration().
 let activeGeneration = null; // { controller: AbortController, stopTypingRequested: boolean } | null
 
+// PERBAIKAN (riwayat chat "loading" tanpa henti, ReferenceError di console):
+// chatListCache sebelumnya dideklarasikan dengan `let` di dekat kode sidebar
+// (jauh di bawah file ini), TAPI init() dipanggil segera di baris berikutnya
+// dan langsung memanggil loadChatList() -> membaca chatListCache. Karena
+// `let` masuk temporal dead zone sampai baris deklarasinya benar-benar
+// dieksekusi, dan saat init() jalan duluan (module masih di awal file),
+// engine belum "sampai" ke deklarasi aslinya -> ReferenceError: Cannot access
+// 'chatListCache' before initialization. Error ini terjadi di dalam promise
+// (loadChatList itu async) sehingga TIDAK muncul sebagai dialog/alert, cuma
+// menghentikan loadChatList() di tengah jalan secara diam-diam -> skeleton
+// animate-pulse di #chatList tidak pernah diganti isinya. Fix: pindahkan
+// deklarasinya ke sini, SEBELUM init() dipanggil. (Deklarasi ganda di bawah,
+// dekat kode sidebar chat list, sudah dihapus supaya tidak dobel.)
+let chatListCache = getCachedChatHistory() || [];
+
 if (session) init();
 
 async function init() {
@@ -49,15 +66,24 @@ async function init() {
   bindQuickActions();
   bindModelPicker();
   bindMessageActions();
+  bindTableScrollHint();
   bindStopButton();
   renderGreeting();
   if (activeProjectId && !currentChatId) showProjectBadge(activeProjectId);
-  await loadChatList();
+  // PERBAIKAN: loadChatList() (isi sidebar) dan loadChat()/loadRecentProjects()
+  // (isi area utama) tidak saling bergantung, tapi sebelumnya dijalankan
+  // berurutan (await satu-satu) sehingga isi chat baru mulai dimuat SETELAH
+  // sidebar selesai fetch. Sekarang keduanya jalan BERSAMAAN — hasil akhirnya
+  // identik, cuma lebih cepat kelihatan. loadChatList() juga sudah render
+  // instan dari cache (lihat fungsi di bawah) jadi sidebar tidak lagi nge-blank
+  // dulu sebelum diisi.
+  const chatListPromise = loadChatList();
   if (currentChatId) {
     await loadChat(currentChatId);
   } else {
     loadRecentProjects();
   }
+  await chatListPromise;
 }
 
 function showProjectBadge(projectId) {
@@ -90,6 +116,43 @@ function renderGreeting() {
  * elemen yang TIDAK PERNAH diganti (di sini: document), lalu dicek target-nya
  * saat event terjadi. Ini otomatis tahan terhadap render ulang icon kapan pun.
  */
+/**
+ * Tabel hasil balasan AI di layar sempit (mobile) di-scroll horizontal, bukan
+ * diperas kolomnya (lihat .msg-table-wrap di style.css). Supaya user sadar ada
+ * konten tersembunyi di sisi kanan, wrap-nya punya gradient fade tipis di tepi
+ * kanan lewat CSS ::after — fungsi ini yang menghilangkan gradient itu begitu
+ * user sudah scroll sampai ujung (class .is-scrolled-end).
+ *
+ * Event "scroll" TIDAK bubble secara normal, jadi delegation di sini pakai fase
+ * capture (addEventListener(..., true)) di #messages — itu satu-satunya cara
+ * event delegation bekerja untuk scroll, dan otomatis mencakup tabel yang baru
+ * muncul belakangan lewat animasi ketik (typeOutReply), tanpa perlu daftar
+ * ulang listener tiap kali ada balasan baru.
+ */
+function bindTableScrollHint() {
+  const container = document.getElementById("messages");
+  if (!container) return;
+  const checkEnd = (wrap) => {
+    const atEnd = wrap.scrollLeft + wrap.clientWidth >= wrap.scrollWidth - 2;
+    wrap.classList.toggle("is-scrolled-end", atEnd || wrap.scrollWidth <= wrap.clientWidth);
+  };
+  container.addEventListener("scroll", (e) => {
+    const wrap = e.target.closest?.(".msg-table-wrap");
+    if (wrap) checkEnd(wrap);
+  }, true);
+  // Cek status awal tiap kali ada tabel baru ditambahkan (tabel pendek yang
+  // sudah muat penuh tidak perlu gradient sama sekali).
+  new MutationObserver((mutations) => {
+    for (const m of mutations) {
+      m.addedNodes.forEach((node) => {
+        if (node.nodeType !== 1) return;
+        node.querySelectorAll?.(".msg-table-wrap").forEach(checkEnd);
+        if (node.matches?.(".msg-table-wrap")) checkEnd(node);
+      });
+    }
+  }).observe(container, { childList: true, subtree: true });
+}
+
 function bindLogout() {
   document.addEventListener("click", (e) => {
     if (e.target.closest("#logoutIcon")) {
@@ -103,18 +166,34 @@ function bindLogout() {
 function bindModelPicker() {
   const select = document.getElementById("modelPicker");
   if (!select) return;
+
+  // PERBAIKAN cache: daftar model jarang berubah (cuma kalau admin ubah lewat
+  // panel admin), tapi sebelumnya di-fetch ulang dari Apps Script SETIAP kali
+  // chat.html dibuka. Sekarang tampilkan cache dulu (instan, dropdown langsung
+  // terisi), lalu tetap fetch listModels seperti biasa di background supaya
+  // kalau admin baru saja ubah model, halaman tetap dapat data terbaru.
+  const cachedModels = getCached("models");
+  if (cachedModels) renderModelOptions_(select, cachedModels);
+
   callApi("listModels", {})
     .then((models) => {
-      select.innerHTML = `<option value="">Otomatis (disarankan)</option>` +
-        models.map((m) => `<option value="${escapeHtml(m.modelSlug)}">${escapeHtml(m.modelSlug)}${m.free ? " · gratis" : ""}</option>`).join("");
-      select.value = selectedModel;
+      setCached("models", models);
+      renderModelOptions_(select, models);
     })
-    .catch(() => { select.innerHTML = `<option value="">Otomatis (disarankan)</option>`; });
+    .catch(() => {
+      if (!cachedModels) select.innerHTML = `<option value="">Otomatis (disarankan)</option>`;
+    });
 
   select.addEventListener("change", () => {
     selectedModel = select.value;
     localStorage.setItem("macca_preferred_model", selectedModel);
   });
+}
+
+function renderModelOptions_(select, models) {
+  select.innerHTML = `<option value="">Otomatis (disarankan)</option>` +
+    models.map((m) => `<option value="${escapeHtml(m.modelSlug)}">${escapeHtml(m.modelSlug)}${m.free ? " · gratis" : ""}</option>`).join("");
+  select.value = selectedModel;
 }
 
 function bindQuickActions() {
@@ -126,41 +205,70 @@ function bindQuickActions() {
   });
 }
 
+function renderRecentProjects_(el, projects) {
+  if (!projects?.length) {
+    el.innerHTML = `<p class="text-sm text-ink-500 col-span-2">Belum ada proyek. <a href="projects.html" class="underline">Buat proyek pertamamu</a>.</p>`;
+    return;
+  }
+  el.innerHTML = projects.map((p) => `
+    <a href="project.html?projectId=${encodeURIComponent(p.id)}" class="doc-card p-5 block hover:-translate-y-0.5 transition-transform">
+      <p class="font-display font-semibold text-ink-900">${escapeHtml(p.name)}</p>
+      <p class="text-xs text-ink-500 mt-1">${escapeHtml(p.type || "Proyek")} · ${formatRelativeTime(p.updatedAt)}</p>
+    </a>`).join("");
+}
+
 async function loadRecentProjects() {
   const el = document.getElementById("recentProjects");
   if (!el) return;
+
+  // PERBAIKAN cache: sama seperti daftar model, proyek jarang berubah dalam
+  // rentang beberapa menit, jadi tampilkan cache dulu (instan) lalu tetap
+  // fetch getProjects di background untuk validasi. Key "projects_recent"
+  // dipisah dari daftar lengkap di halaman Projects (lihat projects.js)
+  // karena ini limit 4, bukan semua proyek.
+  const cached = getCached("projects_recent");
+  if (cached) renderRecentProjects_(el, cached);
+
   try {
     const projects = await callApi("getProjects", { limit: 4 });
-    if (!projects?.length) {
-      el.innerHTML = `<p class="text-sm text-ink-500 col-span-2">Belum ada proyek. <a href="projects.html" class="underline">Buat proyek pertamamu</a>.</p>`;
-      return;
-    }
-    el.innerHTML = projects.map((p) => `
-      <a href="project.html?projectId=${encodeURIComponent(p.id)}" class="doc-card p-5 block hover:-translate-y-0.5 transition-transform">
-        <p class="font-display font-semibold text-ink-900">${escapeHtml(p.name)}</p>
-        <p class="text-xs text-ink-500 mt-1">${escapeHtml(p.type || "Proyek")} · ${formatRelativeTime(p.updatedAt)}</p>
-      </a>`).join("");
+    setCached("projects_recent", projects);
+    renderRecentProjects_(el, projects);
   } catch {
-    el.innerHTML = `<p class="text-sm text-clay-500 col-span-2">Gagal memuat proyek.</p>`;
+    if (!cached) el.innerHTML = `<p class="text-sm text-clay-500 col-span-2">Gagal memuat proyek.</p>`;
   }
 }
 
 // ---------- Sidebar chat list ----------
-let chatListCache = [];
+// PERBAIKAN cache (stale-while-revalidate, lihat lib/historyCache.js): begitu
+// chat.html dibuka (termasuk lewat navigasi dari halaman lain), tampilkan dulu
+// riwayat dari cache sessionStorage (instan, tidak ada skeleton), lalu tetap
+// fetch getChatHistory seperti biasa untuk memastikan akurat. Cache-nya
+// otomatis ikut ter-update tiap kali renderChatList() dipanggil (lihat di
+// bawah), jadi setiap aksi yang sudah ada (kirim pesan, hapus, ganti judul,
+// dst) tetap bekerja sama persis seperti sebelumnya — cuma sekalian nulis ke
+// cache supaya halaman BERIKUTNYA yang dibuka juga dapat data terbaru instan.
+// (chatListCache dideklarasikan di dekat init() di atas file — lihat catatan
+// di sana soal kenapa harus di situ, bukan di sini.)
 
 async function loadChatList() {
   const listEl = document.getElementById("chatList");
+  if (chatListCache.length) renderChatList(); // paint instan dari cache dulu, kalau ada
   try {
     const chats = await callApi("getChatHistory", { limit: 30 });
     chatListCache = chats || [];
     renderChatList();
   } catch {
-    listEl.innerHTML = `<p class="px-3 text-xs text-clay-500">Gagal memuat riwayat</p>`;
+    // Sama seperti sidebar.js: kalau sudah sempat render dari cache, biarkan
+    // tetap tampil (gagal revalidate tidak menghapus apa yang sudah kelihatan).
+    if (!chatListCache.length) {
+      listEl.innerHTML = `<p class="px-3 text-xs text-clay-500">Gagal memuat riwayat</p>`;
+    }
   }
 }
 
 function renderChatList() {
   const listEl = document.getElementById("chatList");
+  setCachedChatHistory(chatListCache);
   if (!chatListCache.length) {
     listEl.innerHTML = `<p class="px-3 text-xs text-ink-500/70">Belum ada percakapan</p>`;
     return;
@@ -322,6 +430,7 @@ function bindComposer() {
 
   bindAttachMenu();
   bindDragAndDrop();
+  bindPasteImage(input);
 
   document.getElementById("removeAttachment").addEventListener("click", () => {
     clearPendingFile();
@@ -556,6 +665,42 @@ function bindDragAndDrop() {
   });
 }
 
+/**
+ * Ctrl+V / Cmd+V gambar langsung ke composer (mirip ChatGPT/Claude desktop): user
+ * screenshot lalu paste tanpa harus save-as file dulu. Dipasang di textarea composer
+ * (bukan document) supaya tidak "mencuri" event paste dari input lain di halaman
+ * (mis. modal rename/edit pesan yang juga punya textarea sendiri).
+ *
+ * clipboardData.items dari gambar yang di-paste biasanya berupa Blob tanpa nama file
+ * (type doang, mis. "image/png"), jadi dibungkus ulang jadi File dengan nama+ekstensi
+ * yang jelas supaya konsisten dengan alur upload file biasa (fileIconFor, formatBytes, dst).
+ * Hanya ambil gambar PERTAMA yang ditemukan di clipboard, selaras dengan batasan "satu
+ * lampiran per pesan" yang sama seperti pada drag & drop (lihat bindDragAndDrop()).
+ */
+function bindPasteImage(input) {
+  input.addEventListener("paste", (e) => {
+    const items = e.clipboardData?.items;
+    if (!items || !items.length) return;
+
+    const imageItem = Array.from(items).find((it) => it.kind === "file" && it.type.startsWith("image/"));
+    if (!imageItem) return; // bukan gambar (mis. teks biasa) -> biarkan paste default jalan
+
+    e.preventDefault();
+    const blob = imageItem.getAsFile();
+    if (!blob) return;
+
+    if (pendingFile) {
+      showToast("Sudah ada lampiran di pesan ini — hapus dulu sebelum menempel gambar baru.", "info");
+      return;
+    }
+
+    const ext = (blob.type.split("/")[1] || "png").replace("jpeg", "jpg");
+    const pastedFile = new File([blob], `tempelan-${Date.now()}.${ext}`, { type: blob.type });
+    setPendingFile(pastedFile);
+    showToast("Gambar dari clipboard dilampirkan.", "success");
+  });
+}
+
 /** Quickview di composer (perbaikan: preview thumbnail foto / ikon dokumen sebelum dikirim). */
 function setPendingFile(file) {
   clearPendingFile();
@@ -766,6 +911,27 @@ async function handleSend(e) {
     );
   }
 
+  const payload = {
+    chatId: currentChatId,
+    message: text,
+    projectId: activeProjectId || undefined,
+    preferredModel: selectedModel || undefined,
+    attachmentId: attachmentId || undefined,
+  };
+  await submitChatMessage_(wrapper, payload, { text, file, attachmentId, storageWarning, input });
+}
+
+/**
+ * Inti pengiriman pesan, diekstrak dari handleSend supaya bisa dipanggil ULANG oleh
+ * tombol "Coba lagi" (lihat appendSendErrorBar_) tanpa user perlu mengetik ulang dari
+ * nol. `wrapper` = bubble pesan user yang sudah tampil (dibuat SEKALI di handleSend,
+ * dipakai lagi apa adanya kalau retry). `restoreCtx` = data yang dibutuhkan untuk
+ * mengembalikan pesan ke kotak ketik (dipakai baik saat Stop/ABORTED maupun saat user
+ * memilih "Kembalikan ke kotak teks" setelah gagal).
+ */
+async function submitChatMessage_(wrapper, payload, restoreCtx) {
+  removeSendErrorBar_(wrapper);
+
   const sendBtn = document.getElementById("sendBtn");
   setLoading(sendBtn, true, "");
 
@@ -773,13 +939,7 @@ async function handleSend(e) {
   const gen = beginGeneration();
 
   try {
-    const result = await callApi("sendChatMessage", {
-      chatId: currentChatId,
-      message: text,
-      projectId: activeProjectId || undefined,
-      preferredModel: selectedModel || undefined,
-      attachmentId: attachmentId || undefined,
-    }, { signal: gen.controller.signal });
+    const result = await callApi("sendChatMessage", payload, { signal: gen.controller.signal });
     currentChatId = result.chatId;
     history.replaceState({}, "", `chat.html?chatId=${encodeURIComponent(currentChatId)}`);
     document.getElementById("chatTitle").textContent = result.chatTitle;
@@ -787,11 +947,13 @@ async function handleSend(e) {
     if (result.userMessage?.id) wrapper.dataset.messageId = result.userMessage.id;
 
     removeTypingIndicator(typingEl);
-    await typeOutReply(result.reply.content, result.reply.model, result.reply.id, gen);
+    await typeOutReply(result.reply.content, result.reply.model, result.reply.id, gen, result.reply.usedAcademicSources, result.reply.truncated);
     if (result.reply.usedImage) {
       showToast("Jawaban ini dianalisis langsung dari foto yang kamu kirim.", "info");
     } else if (result.reply.usedDocuments) {
       showToast("Jawaban ini menggunakan isi dokumen yang kamu unggah.", "info");
+    } else if (result.reply.usedAcademicSources?.length) {
+      showToast(`Jawaban ini pakai ${result.reply.usedAcademicSources.length} sumber akademik terverifikasi.`, "info");
     }
     loadChatList();
   } catch (err) {
@@ -803,30 +965,77 @@ async function handleSend(e) {
       // undo: hapus bubble optimistic yang tadi sudah ditampilkan, lalu kembalikan
       // teks & lampirannya ke form composer supaya user bisa edit/kirim ulang tanpa
       // mengetik dari nol atau memilih ulang filenya.
-      wrapper.remove();
-      if (!document.getElementById("messages").children.length && !currentChatId) {
-        document.getElementById("emptyState").classList.remove("hidden");
-      }
-      input.value = text;
-      input.dispatchEvent(new Event("input", { bubbles: true })); // trigger auto-resize
-      input.focus();
-      // #8: kalau lampiran ini SUDAH selesai diunggah sebelum Stop ditekan (attachmentId
-      // sudah ada), pulihkan tanpa upload ulang — jangan panggil setPendingFile(file) di
-      // sini karena itu akan memicu startPendingUpload() dan mengunggah file yang sama
-      // dua kali secara sia-sia.
-      if (file) {
-        if (attachmentId) restorePendingFileAlreadyUploaded_(file, attachmentId, storageWarning);
-        else setPendingFile(file);
-      }
+      restoreSendToComposer_(wrapper, restoreCtx);
       showToast("Dihentikan. Pesan dikembalikan ke kotak ketik.", "info");
     } else {
-      showToast(err instanceof ApiError ? err.message : "Gagal mengirim pesan.", "error");
+      // PERBAIKAN (AI generate gagal -> bubble "menggantung" tanpa balasan): sebelumnya
+      // di sini cuma toast, lalu user harus mengetik ulang semuanya dari nol kalau mau
+      // coba lagi. Sekarang bubble yang sudah terkirim tetap ada, dengan bar kecil di
+      // bawahnya berisi "Coba lagi" (kirim ulang payload yang sama, tanpa upload ulang
+      // lampiran) atau "Kembalikan ke kotak teks" (batalkan, edit dulu sebelum kirim ulang).
+      const msg = err instanceof ApiError ? err.message : "Gagal mengirim pesan.";
+      showToast(msg, "error");
+      appendSendErrorBar_(wrapper, msg, {
+        onRetry: () => submitChatMessage_(wrapper, payload, restoreCtx),
+        onRestore: () => restoreSendToComposer_(wrapper, restoreCtx),
+      });
     }
   } finally {
     setLoading(sendBtn, false);
     lucide.createIcons();
     endGeneration();
   }
+}
+
+/** Kembalikan bubble pesan yang gagal/dibatalkan ke kotak ketik composer (lihat submitChatMessage_). */
+function restoreSendToComposer_(wrapper, { text, file, attachmentId, storageWarning, input }) {
+  wrapper.remove();
+  if (!document.getElementById("messages").children.length && !currentChatId) {
+    document.getElementById("emptyState").classList.remove("hidden");
+  }
+  input.value = text;
+  input.dispatchEvent(new Event("input", { bubbles: true })); // trigger auto-resize
+  input.focus();
+  // #8: kalau lampiran ini SUDAH selesai diunggah sebelumnya (attachmentId sudah ada),
+  // pulihkan tanpa upload ulang — jangan panggil setPendingFile(file) di sini karena itu
+  // akan memicu startPendingUpload() dan mengunggah file yang sama dua kali secara sia-sia.
+  if (file) {
+    if (attachmentId) restorePendingFileAlreadyUploaded_(file, attachmentId, storageWarning);
+    else setPendingFile(file);
+  }
+}
+
+/** Bar kecil "Coba lagi" / "Kembalikan ke kotak teks" di bawah bubble pesan yang gagal terkirim. */
+function appendSendErrorBar_(wrapper, message, { onRetry, onRestore }) {
+  removeSendErrorBar_(wrapper);
+  const bar = document.createElement("div");
+  bar.className = "send-error-bar mt-1.5 flex flex-col items-end gap-1 max-w-[min(42rem,88%)] ml-auto";
+  bar.innerHTML = `
+    <p class="text-[11px] text-red-600 font-mono text-right">${escapeHtml(message)}</p>
+    <div class="flex items-center gap-1">
+      <button type="button" data-retry-send title="Coba kirim lagi"
+        class="flex items-center gap-1 text-[11px] text-ink-500 hover:text-ink-900 px-1.5 py-1 rounded hover:bg-paper-100">
+        <i data-lucide="refresh-cw" class="w-3 h-3"></i> Coba lagi
+      </button>
+      <button type="button" data-restore-composer title="Kembalikan ke kotak teks"
+        class="flex items-center gap-1 text-[11px] text-ink-500 hover:text-ink-900 px-1.5 py-1 rounded hover:bg-paper-100">
+        <i data-lucide="corner-up-left" class="w-3 h-3"></i> Kembalikan ke kotak teks
+      </button>
+    </div>`;
+  wrapper.appendChild(bar);
+  // Closure per-bubble: tiap pesan yang gagal punya payload & konteks restore-nya
+  // sendiri-sendiri, jadi disimpan langsung di elemen wrapper-nya (dibaca lewat event
+  // delegation di bindMessageActions), bukan di satu variabel global yang bisa tertimpa
+  // kalau ada lebih dari satu pesan gagal berturut-turut.
+  wrapper._onRetrySend = onRetry;
+  wrapper._onRestoreSend = onRestore;
+  lucide.createIcons();
+}
+
+function removeSendErrorBar_(wrapper) {
+  wrapper.querySelector(".send-error-bar")?.remove();
+  wrapper._onRetrySend = null;
+  wrapper._onRestoreSend = null;
 }
 
 // ---------- Message rendering ----------
@@ -882,17 +1091,14 @@ function appendMessage(role, content, animate, attachment, messageId) {
   // untuk hover, jadi tombolnya jadi tidak kelihatan/susah dipicu. Sekarang selalu tampil.
   const actionsRow = `<div class="msg-actions h-6 mt-1 flex items-center gap-1 ${isUser ? "justify-end" : "justify-start"}">${actionsHtml}</div>`;
 
-  // Lebar bubble: dulu fixed (max-w-md/max-w-lg = 28rem/32rem) sehingga pesan
-  // dengan baris panjang tanpa spasi (kode, URL, JSON) bisa memaksa bubble
-  // melebar melewati batas kontainer (lihat komentar #6 di chat.html) —
-  // karena wrapper ini adalah flex item dengan items-end/items-start (bukan
-  // stretch), lebarnya "shrink-to-fit" konten dan TIDAK otomatis dibatasi
-  // oleh max-width induk. Perbaikan: (1) min-w-0 supaya flex item boleh
-  // menyusut penuh dan bukan mempertahankan lebar intrinsik kontennya,
-  // (2) max-w pakai min(REM, %) — persentase relatif terhadap #messages,
-  // yang lebarnya sendiri mengikuti sisa ruang setelah sidebar (lihat
-  // #messages/composer di bawah) — jadi bubble ikut menyempit otomatis
-  // saat sidebar dilebarkan, bukan cuma dibatasi angka tetap.
+  // Bubble user: TETAP dipertahankan (doc-card, rata kanan, lebar dibatasi) — supaya
+  // pesan singkat dari user tetap kelihatan seperti "chat bubble" biasa.
+  //
+  // Balasan Macca: SENGAJA TIDAK dibungkus card/bubble lagi (ikut pola Claude.ai) —
+  // sebelumnya balasan AI dipaksa masuk card selebar ~46rem/90% yang bikin konten lebar
+  // (tabel, blok kode, daftar panjang) jadi sempit dan berdesakan. Sekarang kontainernya
+  // w-full (mengikuti lebar kolom #messages yang sudah dibatasi mx-auto), jadi teks/tabel
+  // AI punya ruang penuh baik di desktop maupun mobile, tanpa border/background card.
   wrapper.innerHTML = isUser
     ? `<div class="max-w-[min(42rem,88%)] min-w-0 flex flex-col items-end">
          <div class="doc-card px-4 py-3 bg-ink-900 text-paper-50 msg-bubble min-w-0 max-w-full">
@@ -901,8 +1107,8 @@ function appendMessage(role, content, animate, attachment, messageId) {
          </div>
          ${actionsRow}
        </div>`
-    : `<div class="max-w-[min(46rem,90%)] min-w-0 flex flex-col items-start">
-         <div class="doc-card px-4 py-3 msg-bubble min-w-0 max-w-full">
+    : `<div class="w-full min-w-0 flex flex-col items-start">
+         <div class="reply-shell min-w-0 max-w-full w-full">
            <p class="text-xs font-mono text-amber-600 mb-1.5 flex items-center gap-1"><i data-lucide="bot" class="w-3.5 h-3.5"></i> Macca</p>
            <div class="text-sm leading-relaxed break-words [overflow-wrap:anywhere] reply-text msg-text"></div>
          </div>
@@ -1020,6 +1226,33 @@ function bindMessageActions() {
       return;
     }
 
+    // ---- Lanjutkan jawaban yang terpotong (lihat appendContinueBar_/continueTruncatedReply) ----
+    const continueBtn = e.target.closest("[data-continue-reply]");
+    if (continueBtn && !continueBtn.disabled) {
+      e.preventDefault();
+      const wrapper = continueBtn.closest("[data-message-id]");
+      if (wrapper) continueTruncatedReply(wrapper, continueBtn);
+      return;
+    }
+
+    // ---- Kirim gagal (bukan Stop): "Coba lagi" / "Kembalikan ke kotak teks" (lihat
+    // appendSendErrorBar_/submitChatMessage_) — pakai closure yang ditempel di wrapper
+    // karena tiap bubble punya payload & konteks restore-nya sendiri-sendiri. ----
+    const retrySendBtn = e.target.closest("[data-retry-send]");
+    if (retrySendBtn && !retrySendBtn.disabled) {
+      e.preventDefault();
+      const wrapper = retrySendBtn.closest(".group");
+      wrapper?._onRetrySend?.();
+      return;
+    }
+    const restoreComposerBtn = e.target.closest("[data-restore-composer]");
+    if (restoreComposerBtn && !restoreComposerBtn.disabled) {
+      e.preventDefault();
+      const wrapper = restoreComposerBtn.closest(".group");
+      wrapper?._onRestoreSend?.();
+      return;
+    }
+
     // ---- Salin jawaban (#3, ala ChatGPT/Claude) ----
     const copyBtn = e.target.closest("[data-copy-msg]");
     if (copyBtn) {
@@ -1130,15 +1363,73 @@ function exportToPdf_(rawText, title, filenameBase) {
   showToast("PDF diunduh.", "success");
 }
 
+/**
+ * PERBAIKAN (format Word rapi & terstruktur): sebelumnya jawaban AI cuma dipecah per
+ * paragraf polos (split "\n\n") — heading (`##`), **bold**, daftar bernomor/bullet, dan
+ * tabel yang sering muncul di jawaban akademik (mis. kerangka BAB, tabel perbandingan)
+ * SEMUA hilang jadi teks rata tanpa struktur begitu dibuka di Word. Sekarang pakai
+ * renderMarkdownToWordHtml (lib/render.js) — parser markdown yang SAMA dengan yang
+ * dipakai untuk menampilkan bubble chat — supaya heading/list/tabel/bold ikut terbawa
+ * ke dokumen Word dalam bentuk tag semantik asli (<h1>, <ul>, <table>, dst), plus
+ * <style> berbasis tag selector (bukan class Tailwind, yang tidak dipahami Word) supaya
+ * hierarki heading, spasi antar-elemen, dan garis tabel benar-benar tampil rapi saat
+ * dibuka di Microsoft Word/LibreOffice/Google Docs.
+ *
+ * Header halaman (mso-*) & namespace `w`/`o` di bawah adalah trik standar "MHTML/Word
+ * HTML" yang bikin Word membuka file ini sebagai dokumen native lengkap dengan ukuran
+ * kertas A4 & margin 2.54cm (default skripsi/tugas akademik Indonesia), BUKAN cuma
+ * "halaman web" tanpa page setup.
+ */
 function exportToWord_(rawText, title, filenameBase) {
-  const bodyHtml = escapeHtml(rawText).split(/\n{2,}/).map((p) => `<p>${p.replace(/\n/g, "<br>")}</p>`).join("");
-  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${escapeHtml(title)}</title></head>
-    <body style="font-family:Calibri,Arial,sans-serif;font-size:12pt;">
-      <h2>${escapeHtml(title)}</h2>
-      ${bodyHtml}
-    </body></html>`;
+  const bodyHtml = renderMarkdownToWordHtml(rawText);
+  const html = `<!DOCTYPE html>
+<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
+<head>
+<meta charset="utf-8">
+<title>${escapeHtml(title)}</title>
+<!--[if gte mso 9]>
+<xml>
+  <w:WordDocument>
+    <w:View>Print</w:View>
+    <w:Zoom>100</w:Zoom>
+    <w:DoNotOptimizeForBrowser/>
+  </w:WordDocument>
+</xml>
+<![endif]-->
+<style>
+  @page WordSection1 {
+    size: 21cm 29.7cm; /* A4 */
+    margin: 2.54cm 2.54cm 2.54cm 2.54cm;
+    mso-header-margin: 1.27cm;
+    mso-footer-margin: 1.27cm;
+  }
+  div.WordSection1 { page: WordSection1; }
+  body { font-family: "Times New Roman", Calibri, serif; font-size: 12pt; line-height: 1.5; color: #111; }
+  h1 { font-size: 18pt; font-weight: bold; margin: 18pt 0 10pt; }
+  h2 { font-size: 15pt; font-weight: bold; margin: 16pt 0 8pt; }
+  h3 { font-size: 13pt; font-weight: bold; margin: 14pt 0 6pt; }
+  h4, h5, h6 { font-size: 12pt; font-weight: bold; margin: 12pt 0 6pt; }
+  p { margin: 0 0 10pt; text-align: justify; }
+  ul, ol { margin: 0 0 10pt; padding-left: 24pt; }
+  li { margin-bottom: 4pt; }
+  table { border-collapse: collapse; width: 100%; margin: 10pt 0; }
+  th, td { border: 1pt solid #444; padding: 6pt 8pt; font-size: 11pt; vertical-align: top; }
+  th { background: #eee; font-weight: bold; }
+  blockquote { margin: 0 0 10pt 0; padding-left: 12pt; border-left: 3pt solid #999; color: #333; font-style: italic; }
+  pre { background: #f3f3f3; padding: 8pt; font-family: "Consolas", monospace; font-size: 10pt; white-space: pre-wrap; }
+  code { font-family: "Consolas", monospace; font-size: 10.5pt; }
+  hr { border: none; border-top: 1pt solid #999; margin: 14pt 0; }
+</style>
+</head>
+<body>
+<div class="WordSection1">
+<h1>${escapeHtml(title)}</h1>
+${bodyHtml}
+</div>
+</body>
+</html>`;
   downloadBlob_(html, "application/msword", `${filenameBase}.doc`);
-  showToast("Dokumen Word (.doc) diunduh.", "success");
+  showToast("Dokumen Word (.doc) diunduh dengan format rapi.", "success");
 }
 
 function exportToExcel_(rawText, title, filenameBase) {
@@ -1193,7 +1484,7 @@ function startEditMessage(wrapper) {
   const editBox = document.createElement("div");
   editBox.className = "msg-edit-box mt-2 flex flex-col gap-2";
   editBox.innerHTML = `
-    <textarea class="w-full min-w-[16rem] max-w-full rounded-md bg-paper-50/10 border border-paper-50/30 text-paper-50 text-sm p-2 resize-none focus:outline-none focus:border-lime-500" rows="2"></textarea>
+    <textarea data-edit-textarea class="w-full min-w-[16rem] max-w-full rounded-md bg-paper-50/10 border border-paper-50/30 text-paper-50 text-sm p-2 resize-none focus:outline-none" rows="2"></textarea>
     <div class="flex justify-end gap-2">
       <button type="button" data-cancel-edit class="text-xs px-3 py-1.5 rounded-md text-paper-50/80 hover:bg-paper-50/10">Batal</button>
       <button type="button" data-save-edit class="text-xs px-3 py-1.5 rounded-md btn-amber font-semibold">Kirim & buat ulang</button>
@@ -1246,11 +1537,13 @@ async function submitEdit(wrapper, messageId, newContent, editBox, textEl) {
     }
     editBox.remove();
 
-    await typeOutReply(result.reply.content, result.reply.model, result.reply.id, gen);
+    await typeOutReply(result.reply.content, result.reply.model, result.reply.id, gen, result.reply.usedAcademicSources, result.reply.truncated);
     if (result.reply.usedImage) {
       showToast("Jawaban ini dianalisis langsung dari foto yang kamu kirim.", "info");
     } else if (result.reply.usedDocuments) {
       showToast("Jawaban ini menggunakan isi dokumen yang kamu unggah.", "info");
+    } else if (result.reply.usedAcademicSources?.length) {
+      showToast(`Jawaban ini pakai ${result.reply.usedAcademicSources.length} sumber akademik terverifikasi.`, "info");
     }
     loadChatList();
   } catch (err) {
@@ -1285,7 +1578,7 @@ async function regenerateMessage(wrapper) {
     }, { signal: gen.controller.signal });
     removeMessagesAfter(wrapper); // pesan setelah balasan ini (biasanya tidak ada, karena selalu yang terakhir)
     wrapper.remove(); // ganti bubble lama dengan yang baru
-    await typeOutReply(result.reply.content, result.reply.model, result.reply.id, gen);
+    await typeOutReply(result.reply.content, result.reply.model, result.reply.id, gen, result.reply.usedAcademicSources, result.reply.truncated);
     loadChatList();
   } catch (err) {
     if (err instanceof ApiError && err.code === "ABORTED") {
@@ -1316,7 +1609,7 @@ function appendTypingIndicator() {
       <span class="flex gap-1.5 items-center">
         <span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span>
       </span>
-      <span class="typing-status text-xs font-mono text-ink-500">Macca sedang berpikir…</span>
+      <span class="typing-status text-xs font-mono">Macca sedang berpikir…</span>
     </div>`;
   container.appendChild(el);
   scrollToBottom();
@@ -1347,7 +1640,7 @@ function removeTypingIndicator(el) {
  * SSE asli), jadi kita render bertahap per beberapa karakter agar terasa
  * seperti mengetik (lihat known_limitations.no_true_streaming).
  */
-async function typeOutReply(fullText, model, messageId, gen) {
+async function typeOutReply(fullText, model, messageId, gen, academicSources, truncated) {
   const wrapper = appendMessage("assistant", "", false, null, messageId);
   const textEl = wrapper.querySelector(".reply-text");
   const chunkSize = 3;
@@ -1367,6 +1660,82 @@ async function typeOutReply(fullText, model, messageId, gen) {
     indicator.textContent = model;
     indicator.classList.remove("hidden");
   }
+  // Kotak "Referensi" terpisah (lihat academicSearch.gs + chat.gs -> usedAcademicSources):
+  // ditaruh SETELAH teks jawaban, bukan dicampur ke dalamnya, supaya user bisa langsung
+  // lihat & klik link DOI-nya untuk verifikasi manual, tanpa perlu percaya buta ke AI.
+  if (academicSources && academicSources.length) {
+    renderAcademicSources_(wrapper, academicSources);
+  }
+  // PERBAIKAN (jawaban tiba-tiba berhenti di tengah): kalau chat.gs menandai balasan ini
+  // terpotong (kena batas max_tokens, lihat route.truncated di router.gs), tampilkan
+  // tombol "Lanjutkan" alih-alih membiarkan user mengira jawabannya memang sudah selesai.
+  if (truncated) appendContinueBar_(wrapper, textEl);
+  return wrapper;
+}
+
+/** Tombol "Lanjutkan" di bawah balasan yang terpotong (lihat typeOutReply/continueTruncatedReply). */
+function appendContinueBar_(wrapper, textEl) {
+  wrapper.querySelectorAll(".continue-reply-bar").forEach((b) => b.remove());
+  const bar = document.createElement("div");
+  bar.className = "continue-reply-bar mt-2";
+  bar.innerHTML = `<button type="button" data-continue-reply title="Jawaban ini terpotong, lanjutkan dari titik terakhir"
+      class="flex items-center gap-1.5 text-xs font-medium text-amber-700 hover:text-amber-900 px-2.5 py-1.5 rounded-md border border-amber-300/70 bg-amber-50 hover:bg-amber-100">
+      <i data-lucide="corner-down-right" class="w-3.5 h-3.5"></i> Jawaban terpotong — Lanjutkan
+    </button>`;
+  (textEl || wrapper).insertAdjacentElement("afterend", bar);
+  lucide.createIcons();
+}
+
+/**
+ * Dipanggil saat tombol "Lanjutkan" di atas ditekan. Minta backend menyambung dari
+ * titik terakhir (bukan mengulang dari awal, lihat handleContinueReply/
+ * generateContinuationReply_ di apps-script), lalu ganti isi bubble dengan hasil
+ * gabungannya. Status loading pakai gaya SHIMMER TEXT (.typing-status) yang sama dengan
+ * indikator "Macca sedang berpikir…" di appendTypingIndicator — bukan animasi titik —
+ * supaya semua status "sedang memproses" di aplikasi ini konsisten satu gaya.
+ */
+async function continueTruncatedReply(wrapper, btn) {
+  if (activeGeneration) return showToast("Tunggu proses sebelumnya selesai, atau tekan Stop dulu.", "info");
+  const messageId = wrapper.dataset.messageId;
+  const textEl = wrapper.querySelector(".reply-text");
+  if (!messageId || !textEl) return;
+
+  const bar = btn.closest(".continue-reply-bar");
+  bar.innerHTML = `<span class="typing-status text-xs font-mono">Melanjutkan jawaban…</span>`;
+
+  const gen = beginGeneration();
+  try {
+    const result = await callApi("continueReply", { chatId: currentChatId, messageId }, { signal: gen.controller.signal });
+    textEl.innerHTML = renderFormattedText(result.reply.content);
+    textEl.dataset.raw = result.reply.content;
+    bar.remove();
+    if (result.reply.truncated) appendContinueBar_(wrapper, textEl);
+    scrollToBottom();
+  } catch (err) {
+    if (err instanceof ApiError && err.code === "ABORTED") showToast("Dihentikan.", "info");
+    else showToast(err instanceof ApiError ? err.message : "Gagal melanjutkan jawaban.", "error");
+    appendContinueBar_(wrapper, textEl); // kembalikan tombolnya supaya bisa dicoba lagi
+  } finally {
+    endGeneration();
+  }
+}
+
+/** Render daftar sumber akademik terverifikasi di bawah satu bubble balasan Macca. */
+function renderAcademicSources_(wrapper, sources) {
+  const bubble = wrapper.querySelector(".reply-text")?.closest(".reply-shell") || wrapper;
+  const box = document.createElement("div");
+  box.className = "mt-2 pt-2 border-t border-paper-200 text-[11px] text-ink-600 space-y-1";
+  box.innerHTML = `<div class="font-medium text-ink-700 flex items-center gap-1">
+      <i data-lucide="library" class="w-3 h-3"></i> Referensi (${sources.length})
+    </div>` +
+    sources.map((s, i) => {
+      const label = `${escapeHtml(s.title)}${s.authors ? " — " + escapeHtml(s.authors) : ""}${s.year ? " (" + escapeHtml(String(s.year)) + ")" : ""}`;
+      return s.doiOrUrl
+        ? `<div>[${i + 1}] <a href="${escapeHtml(s.doiOrUrl)}" target="_blank" rel="noopener" class="text-blue-600 hover:underline">${label}</a></div>`
+        : `<div>[${i + 1}] ${label}</div>`;
+    }).join("");
+  bubble.appendChild(box);
+  lucide.createIcons();
 }
 
 function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }

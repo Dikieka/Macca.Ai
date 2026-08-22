@@ -14,6 +14,34 @@ import { getSession } from "./auth.js";
  *   signal: #5 (stop generate) -> AbortController.signal dari pemanggil (lihat chat.js
  *   beginGeneration()), supaya user bisa membatalkan request yang masih menunggu balasan AI.
  */
+// PERBAIKAN (riwayat chat "loading" selamanya): fetch() browser TIDAK punya batas
+// waktu bawaan. Kalau Apps Script Web App macet/lambat merespons (cold start,
+// kena antrian LockService, kuota, dsb — lihat callApiWithProgress yang sudah
+// lebih dulu diberi xhr.timeout karena masalah persis ini di jalur upload),
+// promise callApi() bisa menggantung TANPA PERNAH resolve/reject. Akibatnya
+// kode pemanggil (mis. loadChatList() di chat.js/sidebar.js) tidak pernah
+// keluar dari blok try, skeleton animate-pulse di #chatList tidak pernah
+// diganti, dan yang terlihat oleh user cuma "loading" tanpa henti — tidak ada
+// pesan error sama sekali karena memang tidak ada apa pun yang gagal secara
+// eksplisit. Timeout di bawah ini memaksa request menyerah setelah 20 detik
+// supaya selalu ada hasil (sukses ATAU pesan error) yang bisa ditampilkan.
+const DEFAULT_TIMEOUT_MS = 20000;
+
+// PERBAIKAN (AI generate "sering gagal" / bubble macet lalu dianggap gagal): 20 detik
+// tadinya dipakai untuk SEMUA action, termasuk yang benar-benar menghasilkan balasan AI.
+// Untuk chat biasa itu longgar, tapi untuk pertanyaan yang lewat jalur ensemble akademik
+// (3 model paralel + 1 sintesis, lihat router.gs generateAcademicEnsembleReply_) atau yang
+// perlu fallback ke model kedua karena model pertama gagal/lambat (model gratis OpenRouter
+// kadang butuh 15-30 detik sendiri), total waktunya gampang lewat 20 detik walau server
+// sebenarnya masih memproses dengan normal dan AKAN tetap menjawab kalau ditunggu lebih
+// lama. Selama ini frontend keburu abort duluan lalu menganggapnya gagal — jadi bukan
+// server yang gagal, tapi client yang menyerah terlalu cepat. Action generate AI di bawah
+// ini dapat jatah waktu jauh lebih panjang; action ringan (getChatHistory, dsb) tetap pakai
+// DEFAULT_TIMEOUT_MS supaya UI lain tidak ikut terasa "menggantung" kalau server memang
+// benar-benar tidak merespons.
+const LONG_TIMEOUT_MS = 75000;
+const LONG_TIMEOUT_ACTIONS_ = new Set(["sendChatMessage", "editMessage", "regenerateReply", "continueReply", "paraphrase"]);
+
 export async function callApi(action, payload = {}, opts = { auth: true }) {
   const body = { action, ...payload };
 
@@ -25,6 +53,17 @@ export async function callApi(action, payload = {}, opts = { auth: true }) {
     body.token = session.token;
   }
 
+  const timeoutMs = opts.timeoutMs || (LONG_TIMEOUT_ACTIONS_.has(action) ? LONG_TIMEOUT_MS : DEFAULT_TIMEOUT_MS);
+
+  // Gabungkan timeout internal dengan signal eksternal (mis. tombol Stop saat
+  // generate balasan AI) — siapa pun yang trigger duluan yang menang.
+  const timeoutController = new AbortController();
+  const timeoutId = setTimeout(() => timeoutController.abort(new DOMException("Timeout", "TimeoutError")), timeoutMs);
+  if (opts.signal) {
+    if (opts.signal.aborted) timeoutController.abort(opts.signal.reason);
+    else opts.signal.addEventListener("abort", () => timeoutController.abort(opts.signal.reason), { once: true });
+  }
+
   let res;
   try {
     // Apps Script Web App tidak mendukung header custom + preflight dengan baik,
@@ -34,15 +73,22 @@ export async function callApi(action, payload = {}, opts = { auth: true }) {
       method: "POST",
       headers: { "Content-Type": "text/plain;charset=utf-8" },
       body: JSON.stringify(body),
-      signal: opts.signal,
+      signal: timeoutController.signal,
     });
   } catch (err) {
     // #5: fetch yang dibatalkan lewat AbortController.abort() masuk sini dengan
     // err.name === "AbortError" — ini BUKAN kegagalan jaringan, jadi jangan
     // ditampilkan sebagai NETWORK_ERROR (pesannya menyesatkan & memicu toast merah
     // padahal user sengaja menekan tombol Stop).
-    if (err?.name === "AbortError") throw new ApiError("ABORTED", "Dihentikan oleh pengguna.");
+    if (err?.name === "AbortError" || err?.name === "TimeoutError") {
+      // Bedakan: timeout internal kita (server tidak merespons) vs benar-benar
+      // dibatalkan user lewat opts.signal (mis. tombol Stop).
+      if (opts.signal?.aborted) throw new ApiError("ABORTED", "Dihentikan oleh pengguna.");
+      throw new ApiError("TIMEOUT", "Server tidak merespons dalam waktu wajar. Coba lagi sebentar lagi.");
+    }
     throw new ApiError("NETWORK_ERROR", "Tidak bisa menghubungi server. Cek koneksi internet kamu.");
+  } finally {
+    clearTimeout(timeoutId);
   }
 
   let json;

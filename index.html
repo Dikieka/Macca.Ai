@@ -5,6 +5,16 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Macca.Ai — Nemenin Kamu Ngerjain Dokumen, Bareng AI</title>
 <meta name="description" content="Macca.Ai bantu mahasiswa, dosen, peneliti, sampai profesional buat baca, nulis, dan ngelola dokumen bareng AI yang beneran inget konteks kamu — bukan sekadar chatbot biasa." />
+<meta property="og:type" content="website" />
+<meta property="og:title" content="Macca.Ai — Nemenin Kamu Ngerjain Dokumen, Bareng AI" />
+<meta property="og:description" content="Macca.Ai bantu mahasiswa, dosen, peneliti, sampai profesional buat baca, nulis, dan ngelola dokumen bareng AI yang beneran inget konteks kamu — bukan sekadar chatbot biasa." />
+<meta property="og:image" content="assets/icons/icon-512.png" />
+<meta property="og:url" content="https://macca.ai/" />
+<meta property="og:site_name" content="Macca.Ai" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="Macca.Ai — Nemenin Kamu Ngerjain Dokumen, Bareng AI" />
+<meta name="twitter:description" content="Macca.Ai bantu mahasiswa, dosen, peneliti, sampai profesional buat baca, nulis, dan ngelola dokumen bareng AI yang beneran inget konteks kamu — bukan sekadar chatbot biasa." />
+<meta name="twitter:image" content="assets/icons/icon-512.png" />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Press+Start+2P&display=swap" rel="stylesheet">
 <script src="https://cdn.tailwindcss.com"></script>
@@ -49,9 +59,11 @@
     </a>
     <nav class="hidden md:flex items-center gap-8 text-sm font-medium text-ink-700">
       <a href="#fitur" class="nav-link hover:text-ink-900">Fitur</a>
+      <a href="#keunggulan" class="nav-link hover:text-ink-900">Keunggulan</a>
       <a href="#akademik" class="nav-link hover:text-ink-900">Akademik</a>
       <a href="#memory" class="nav-link hover:text-ink-900">Memory</a>
       <a href="#cara-kerja" class="nav-link hover:text-ink-900">Cara Kerja</a>
+      <a href="#faq" class="nav-link hover:text-ink-900">FAQ</a>
     </nav>
     <div class="flex items-center gap-3">
       <a href="pages/login.html" class="hidden sm:inline-block text-sm font-semibold text-ink-900 hover:text-amber-600">Masuk</a>
@@ -73,9 +85,11 @@
   <nav id="mobileMenu" class="md:hidden mobile-menu overflow-hidden border-t border-[var(--line)] bg-paper-50">
     <div class="max-w-6xl mx-auto px-6 py-4 flex flex-col gap-1 text-sm font-medium text-ink-700">
       <a href="#fitur" class="mobile-nav-link px-2 py-2.5 rounded-md hover:bg-paper-100 hover:text-ink-900">Fitur</a>
+      <a href="#keunggulan" class="mobile-nav-link px-2 py-2.5 rounded-md hover:bg-paper-100 hover:text-ink-900">Keunggulan</a>
       <a href="#akademik" class="mobile-nav-link px-2 py-2.5 rounded-md hover:bg-paper-100 hover:text-ink-900">Akademik</a>
       <a href="#memory" class="mobile-nav-link px-2 py-2.5 rounded-md hover:bg-paper-100 hover:text-ink-900">Memory</a>
       <a href="#cara-kerja" class="mobile-nav-link px-2 py-2.5 rounded-md hover:bg-paper-100 hover:text-ink-900">Cara Kerja</a>
+      <a href="#faq" class="mobile-nav-link px-2 py-2.5 rounded-md hover:bg-paper-100 hover:text-ink-900">FAQ</a>
       <a href="pages/login.html" class="mobile-nav-link px-2 py-2.5 rounded-md hover:bg-paper-100 hover:text-ink-900 sm:hidden">Masuk</a>
     </div>
   </nav>
@@ -139,9 +153,50 @@
     <div class="reveal doc-card p-6 group"><i data-lucide="message-square-text" class="w-6 h-6 text-ink-900 transition-all duration-300 group-hover:scale-125 group-hover:-rotate-6 group-hover:text-lime-500"></i><h3 class="font-display text-lg font-semibold mt-3">AI Chat Kontekstual</h3><p class="text-sm text-ink-700 mt-2">Ngobrol sama AI yang inget proyek dan dokumen yang lagi kamu kerjain.</p></div>
     <div class="reveal doc-card p-6 group"><i data-lucide="file-search" class="w-6 h-6 text-ink-900 transition-all duration-300 group-hover:scale-125 group-hover:-rotate-6 group-hover:text-lime-500"></i><h3 class="font-display text-lg font-semibold mt-3">Analisis PDF & DOCX</h3><p class="text-sm text-ink-700 mt-2">Upload dokumen, tanya apa aja soal isinya, langsung dapet jawaban lengkap sama halamannya.</p></div>
     <div class="reveal doc-card p-6 group"><i data-lucide="graduation-cap" class="w-6 h-6 text-ink-900 transition-all duration-300 group-hover:scale-125 group-hover:-rotate-6 group-hover:text-lime-500"></i><h3 class="font-display text-lg font-semibold mt-3">Asisten Akademik</h3><p class="text-sm text-ink-700 mt-2">Bantu proses nulis skripsi, jurnal, sampai proposal per bab, biar lebih terarah.</p></div>
-    <div class="reveal doc-card p-6 group"><i data-lucide="calculator" class="w-6 h-6 text-ink-900 transition-all duration-300 group-hover:scale-125 group-hover:-rotate-6 group-hover:text-lime-500"></i><h3 class="font-display text-lg font-semibold mt-3">RAB Assistant</h3><p class="text-sm text-ink-700 mt-2">Hitung anggaran beneran akurat pakai rumus pasti, bukan kira-kira ala AI.</p></div>
+    <div class="reveal doc-card p-6 group"><i data-lucide="calculator" class="w-6 h-6 text-ink-900 transition-all duration-300 group-hover:scale-125 group-hover:-rotate-6 group-hover:text-lime-500"></i><h3 class="font-display text-lg font-semibold mt-3">RAB Assistant <span class="text-[10px] font-mono font-normal text-ink-500 align-middle">buat proyek non-akademik</span></h3><p class="text-sm text-ink-700 mt-2">Hitung anggaran beneran akurat pakai rumus pasti, bukan kira-kira ala AI — buat kamu yang juga ngurusin proyek atau usaha.</p></div>
     <div class="reveal doc-card p-6 group"><i data-lucide="folder-kanban" class="w-6 h-6 text-ink-900 transition-all duration-300 group-hover:scale-125 group-hover:-rotate-6 group-hover:text-lime-500"></i><h3 class="font-display text-lg font-semibold mt-3">Project Workspace</h3><p class="text-sm text-ink-700 mt-2">Semua chat, dokumen, dan catatan ngumpul rapi dalam satu proyek.</p></div>
     <div class="reveal doc-card p-6 group"><i data-lucide="shield-check" class="w-6 h-6 text-ink-900 transition-all duration-300 group-hover:scale-125 group-hover:-rotate-6 group-hover:text-lime-500"></i><h3 class="font-display text-lg font-semibold mt-3">AI Reviewer</h3><p class="text-sm text-ink-700 mt-2">Jawaban penting dicek ulang dulu sebelum sampai ke kamu, biar makin bisa dipercaya.</p></div>
+  </div>
+</section>
+
+<!-- ============ KEUNGGULAN ============ -->
+<section id="keunggulan" class="max-w-6xl mx-auto px-6 py-24">
+  <div class="max-w-xl reveal">
+    <span class="layer-badge text-lime-500">KENAPA MACCA.AI</span>
+    <h2 class="font-display text-3xl sm:text-4xl font-semibold text-ink-900 mt-4">Detail kecil yang bikin kerja bareng AI jadi lebih enak.</h2>
+    <p class="mt-4 text-ink-700">Bukan cuma soal model AI-nya, tapi juga soal seberapa mulus prosesnya buat kamu sehari-hari.</p>
+  </div>
+  <div class="mt-12 grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+    <div class="reveal doc-card p-6 group">
+      <i data-lucide="clipboard-paste" class="w-6 h-6 text-ink-900 transition-all duration-300 group-hover:scale-125 group-hover:-rotate-6 group-hover:text-lime-500"></i>
+      <h3 class="font-display text-lg font-semibold mt-3">Tempel Langsung dari Clipboard</h3>
+      <p class="text-sm text-ink-700 mt-2">Habis screenshot, tinggal Ctrl+V di kolom chat — gambarnya langsung nempel ke pesan, nggak perlu save file dulu terus upload manual.</p>
+    </div>
+    <div class="reveal doc-card p-6 group">
+      <i data-lucide="wand-2" class="w-6 h-6 text-ink-900 transition-all duration-300 group-hover:scale-125 group-hover:-rotate-6 group-hover:text-lime-500"></i>
+      <h3 class="font-display text-lg font-semibold mt-3">Parafrase Satu Klik</h3>
+      <p class="text-sm text-ink-700 mt-2">Tempel kalimat, pilih gayanya (formal, santai, ringkas, atau lebih detail), Macca tulis ulang kalimatnya — makna & data aslinya tetap terjaga.</p>
+    </div>
+    <div class="reveal doc-card p-6 group">
+      <i data-lucide="gauge" class="w-6 h-6 text-ink-900 transition-all duration-300 group-hover:scale-125 group-hover:-rotate-6 group-hover:text-lime-500"></i>
+      <h3 class="font-display text-lg font-semibold mt-3">Balasan Cepat, Nggak Bikin Nunggu</h3>
+      <p class="text-sm text-ink-700 mt-2">Pertanyaan yang mirip sama sebelumnya langsung dijawab tanpa jeda panjang — jadi ngobrolnya tetap terasa natural, nggak kayak nungguin loading.</p>
+    </div>
+    <div class="reveal doc-card p-6 group">
+      <i data-lucide="layers" class="w-6 h-6 text-ink-900 transition-all duration-300 group-hover:scale-125 group-hover:-rotate-6 group-hover:text-lime-500"></i>
+      <h3 class="font-display text-lg font-semibold mt-3">Kuat Walau Dokumenmu Ratusan Halaman</h3>
+      <p class="text-sm text-ink-700 mt-2">Upload skripsi 100 halaman atau kumpulan jurnal sekaligus, Macca tetap fokus jawab bagian yang kamu tanya — nggak ngelantur, nggak lemot.</p>
+    </div>
+    <div class="reveal doc-card p-6 group">
+      <i data-lucide="paperclip" class="w-6 h-6 text-ink-900 transition-all duration-300 group-hover:scale-125 group-hover:-rotate-6 group-hover:text-lime-500"></i>
+      <h3 class="font-display text-lg font-semibold mt-3">Drag & Drop, Kapan Aja</h3>
+      <p class="text-sm text-ink-700 mt-2">Selain paste dan klik lampirkan, file juga bisa langsung diseret dari File Explorer/Finder ke jendela chat.</p>
+    </div>
+    <div class="reveal doc-card p-6 group">
+      <i data-lucide="server-cog" class="w-6 h-6 text-ink-900 transition-all duration-300 group-hover:scale-125 group-hover:-rotate-6 group-hover:text-lime-500"></i>
+      <h3 class="font-display text-lg font-semibold mt-3">Jarang Down, Jarang Error</h3>
+      <p class="text-sm text-ink-700 mt-2">Kalau satu jalur lagi sibuk, sistem otomatis alihkan ke jalur lain di belakang layar — kamu tinggal terima jawabannya, tanpa perlu coba-coba kirim ulang.</p>
+    </div>
   </div>
 </section>
 
@@ -247,6 +302,51 @@
   </div>
 </section>
 
+<!-- ============ FAQ ============ -->
+<section id="faq" class="max-w-6xl mx-auto px-6 py-24">
+  <div class="max-w-xl reveal">
+    <span class="layer-badge text-amber-500">FAQ</span>
+    <h2 class="font-display text-3xl sm:text-4xl font-semibold text-ink-900 mt-4">Pertanyaan yang sering ditanyain.</h2>
+  </div>
+  <div class="mt-10 space-y-3 reveal">
+    <details class="doc-card p-5 group">
+      <summary class="font-display text-base font-semibold text-ink-900 cursor-pointer list-none flex items-center justify-between gap-4">
+        Dokumen yang saya upload aman nggak?
+        <i data-lucide="chevron-down" class="w-4 h-4 shrink-0 transition-transform group-open:rotate-180"></i>
+      </summary>
+      <p class="text-sm text-ink-700 mt-3">Dokumen dan chat kamu cuma diproses buat menjawab permintaanmu sendiri, nggak dibagikan ke pengguna lain, dan nggak dijual ke pihak ketiga. Kamu bisa hapus dokumen atau chat kapan aja lewat halaman Documents/Chat. Detail lengkapnya ada di <a href="pages/privacy.html" class="underline hover:text-ink-900">Kebijakan Privasi</a>.</p>
+    </details>
+    <details class="doc-card p-5 group">
+      <summary class="font-display text-base font-semibold text-ink-900 cursor-pointer list-none flex items-center justify-between gap-4">
+        Gratisnya beneran gratis, atau nanti ujung-ujungnya bayar?
+        <i data-lucide="chevron-down" class="w-4 h-4 shrink-0 transition-transform group-open:rotate-180"></i>
+      </summary>
+      <p class="text-sm text-ink-700 mt-3">Kamu bisa mulai pakai Macca.Ai tanpa kartu kredit dan tanpa biaya di awal. Nggak ada biaya tersembunyi yang tiba-tiba muncul — kalau suatu saat ada paket berbayar untuk kebutuhan lebih besar, itu akan jelas dan jadi pilihan, bukan paksaan.</p>
+    </details>
+    <details class="doc-card p-5 group">
+      <summary class="font-display text-base font-semibold text-ink-900 cursor-pointer list-none flex items-center justify-between gap-4">
+        AI-nya bisa salah nggak? Boleh dipercaya penuh?
+        <i data-lucide="chevron-down" class="w-4 h-4 shrink-0 transition-transform group-open:rotate-180"></i>
+      </summary>
+      <p class="text-sm text-ink-700 mt-3">Bisa aja keliru, sama kayak AI manapun — makanya tiap jawaban yang berbasis dokumenmu selalu dikasih rujukan halaman/sumbernya, biar gampang dicek ulang. Untuk keperluan resmi (skripsi, laporan ke atasan, dsb), tetap verifikasi info penting sebelum dipakai final.</p>
+    </details>
+    <details class="doc-card p-5 group">
+      <summary class="font-display text-base font-semibold text-ink-900 cursor-pointer list-none flex items-center justify-between gap-4">
+        Formatnya apa aja yang bisa diupload?
+        <i data-lucide="chevron-down" class="w-4 h-4 shrink-0 transition-transform group-open:rotate-180"></i>
+      </summary>
+      <p class="text-sm text-ink-700 mt-3">PDF, DOCX, dan XLSX buat dokumen, plus gambar (screenshot, foto) yang bisa langsung ditempel dari clipboard atau di-drag & drop ke jendela chat.</p>
+    </details>
+    <details class="doc-card p-5 group">
+      <summary class="font-display text-base font-semibold text-ink-900 cursor-pointer list-none flex items-center justify-between gap-4">
+        Bedanya sama ChatGPT/AI chatbot biasa apa?
+        <i data-lucide="chevron-down" class="w-4 h-4 shrink-0 transition-transform group-open:rotate-180"></i>
+      </summary>
+      <p class="text-sm text-ink-700 mt-3">Chatbot biasa lupa konteks tiap sesi baru dimulai. Macca nyimpen konteks proyekmu (dokumen, metodologi, gaya nulis) di Project Memory & Personal Memory, jadi kamu nggak perlu jelasin ulang dari nol tiap kali buka chat baru.</p>
+    </details>
+  </div>
+</section>
+
 <!-- ============ CTA ============ -->
 <section class="max-w-6xl mx-auto px-6 pb-24">
   <div class="doc-card bg-lime-500 text-paper-50 p-10 sm:p-14 text-center reveal">
@@ -267,6 +367,8 @@
     </div>
     <p class="text-xs text-ink-500 font-mono">© 2026 Macca.Ai — Nemenin Kamu Ngerjain Dokumen, Bareng AI.</p>
     <div class="flex gap-5 text-sm text-ink-700">
+      <a href="pages/privacy.html" class="hover:text-ink-900">Privasi</a>
+      <a href="pages/terms.html" class="hover:text-ink-900">Syarat</a>
       <a href="pages/login.html" class="hover:text-ink-900">Masuk</a>
       <a href="pages/register.html" class="hover:text-ink-900">Daftar</a>
     </div>

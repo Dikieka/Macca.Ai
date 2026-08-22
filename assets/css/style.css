@@ -237,8 +237,25 @@ body {
   }
 }
 
-.thin-scroll::-webkit-scrollbar { width: 6px; }
-.thin-scroll::-webkit-scrollbar-thumb { background: var(--line); border-radius: 999px; }
+/* Scrollbar minimalis kustom — dipakai di sidebar, resultBox, dan textarea
+   (sourceText di form paraphrase) supaya tidak tampil scrollbar bawaan
+   browser yang tebal/plain. Track dibuat transparan, thumb tipis dengan
+   sedikit "napas" dari tepi (border transparan + background-clip) dan
+   berubah warna pas di-hover supaya kelihatan hidup tapi tetap halus. */
+.thin-scroll { scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
+.thin-scroll:hover { scrollbar-color: var(--lime-600) transparent; }
+.thin-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+.thin-scroll::-webkit-scrollbar-track { background: transparent; }
+.thin-scroll::-webkit-scrollbar-thumb {
+  background-color: var(--line);
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background-clip: padding-box;
+  transition: background-color .2s ease;
+}
+.thin-scroll:hover::-webkit-scrollbar-thumb { background-color: var(--lime-600); }
+.thin-scroll::-webkit-scrollbar-thumb:hover { background-color: var(--lime-500); }
+.thin-scroll::-webkit-scrollbar-corner { background: transparent; }
 
 /* Perbaikan #3: handle drag untuk melebar/menyempitkan sidebar kiri.
    touch-action:none supaya pointer drag juga jalan mulus di layar sentuh (tablet). */
@@ -282,6 +299,66 @@ body {
 @keyframes typing-bounce {
   0%, 60%, 100% { transform: translateY(0); opacity: .4; }
   30% { transform: translateY(-4px); opacity: 1; }
+}
+
+/* ==========================================================================
+   Shimmer text — label status "Macca sedang berpikir…" (ala Claude).
+   Teks dasarnya pudar (ink-500), lalu ada gradient terang yang nyapu dari
+   kiri ke kanan berulang-ulang lewat background-clip:text, jadi kesannya
+   "menyala" bergerak, bukan cuma statis pudar atau blink on/off biasa.
+   background-size 250% dipilih supaya "sapuan terang"-nya cukup sempit
+   dibanding lebar teks (kelihatan seperti sorotan lewat), bukan menerangi
+   seluruh teks sekaligus.
+
+   PERBAIKAN (animasi tidak kelihatan sama sekali — teks tampil putih polos,
+   diam, seperti tidak ada style ini yang jalan): app ini pakai Tailwind lewat
+   Play CDN (cdn.tailwindcss.com, lihat <head> tiap halaman), yang men-scan
+   ulang DOM lewat MutationObserver dan MENYISIPKAN ULANG stylesheet hasil
+   generate-nya setiap kali ada elemen baru muncul — PERSIS yang terjadi
+   setiap kali bubble ini dibuat lewat JS (appendTypingIndicator). Stylesheet
+   Tailwind yang disisipkan ulang itu bisa mendarat SETELAH style.css di
+   <head>, jadi rule netral (mis. dari base/preflight-nya) menang lewat
+   urutan dokumen walau specificity-nya sama, dan color:transparent di sini
+   "kalah" -> teks balik ke warna default (putih/ink-900) yang tidak
+   transparan, background-clip:text jadi tidak kelihatan efeknya sama sekali,
+   dan hasilnya kelihatan seperti animasinya "tidak jalan". `!important` di
+   properti terkait warna/clip di bawah memaksa rule ini SELALU menang
+   terlepas dari urutan penyisipan ulang stylesheet Tailwind tsb. -->
+.typing-status {
+  display: inline-block;
+  background-image: linear-gradient(
+    90deg,
+    var(--ink-500) 0%,
+    var(--ink-500) 35%,
+    var(--ink-900) 50%,
+    var(--lime-500) 52%,
+    var(--ink-900) 54%,
+    var(--ink-500) 65%,
+    var(--ink-500) 100%
+  );
+  background-repeat: no-repeat;
+  background-size: 250% 100%;
+  background-position: 200% 0;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  color: transparent !important;
+  -webkit-text-fill-color: transparent !important;
+  animation: shimmer-sweep 2.2s linear infinite;
+  will-change: background-position;
+}
+@keyframes shimmer-sweep {
+  0% { background-position: 200% 0; }
+  100% { background-position: -50% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .typing-status {
+    animation: none;
+    background: none;
+    -webkit-background-clip: initial !important;
+    background-clip: initial !important;
+    -webkit-text-fill-color: unset !important;
+    color: var(--ink-500) !important;
+  }
 }
 
 /* Kursor berkedip ala terminal, dipakai di hero/signature element */
@@ -434,6 +511,16 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   outline-offset: 2px;
 }
 
+/* Composer chat, textarea edit pesan, dan form paraphrase sengaja dikecualikan
+   dari outline fokus di atas (permintaan: hilangkan animasi/kotak hijau saat
+   mengetik) — selector ID di sini lebih spesifik jadi menang dibanding aturan
+   global textarea:focus-visible. */
+#composerInput:focus-visible,
+#sourceText:focus-visible,
+[data-edit-textarea]:focus-visible {
+  outline: none;
+}
+
 /* Perbaikan bug bubble chat melebar ke kiri/kanan untuk teks panjang tanpa spasi
    (kode, URL, JSON, dsb). break-words/overflow-wrap Tailwind di elemen teks saja
    kadang tidak cukup karena leluhurnya flex item dengan align-items != stretch
@@ -524,15 +611,27 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   white-space: pre;
 }
 
-/* ---- Tabel markdown "| a | b |" ---- */
+/* ---- Tabel markdown "| a | b |" ----
+   Dua perilaku beda tergantung ukuran layar:
+   - Desktop (default di bawah ini): tabel di-"fit" ke lebar kontainer
+     (table-layout:fixed + width:100%), kolom berbagi rata dan teks panjang
+     di-wrap ke baris baru — TIDAK ada scroll horizontal, karena di layar
+     lebar itu cuma bikin ribet klik-geser padahal ruangnya cukup.
+   - Mobile (media query di bawah, ≤640px): dibalik jadi width:max-content
+     supaya kolom tidak diperas (yang bikin tabel jadi tinggi & aneh — lihat
+     komentar detail di blok @media di bawah), dan WADAH-nya yang di-scroll
+     horizontal. */
 .msg-text .msg-table-wrap {
   margin: 0.7em 0;
   overflow-x: auto;
+  overflow-y: hidden;
   border-radius: 8px;
   border: 1px solid rgba(150, 158, 180, 0.3);
+  -webkit-overflow-scrolling: touch;
 }
 .msg-text table.msg-table {
   border-collapse: collapse;
+  table-layout: fixed;
   width: 100%;
   font-size: 0.85rem;
 }
@@ -543,6 +642,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   border-right: 1px solid rgba(150, 158, 180, 0.15);
   text-align: left;
   vertical-align: top;
+  overflow-wrap: break-word;
 }
 .msg-text table.msg-table th:last-child,
 .msg-text table.msg-table td:last-child { border-right: none; }
@@ -550,10 +650,56 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   background: rgba(150, 158, 180, 0.15);
   font-family: 'Space Grotesk', 'SpaceGrotesk-fallback', sans-serif;
   font-weight: 700;
-  white-space: nowrap;
 }
 .msg-text table.msg-table tbody tr:last-child td { border-bottom: none; }
 .msg-text table.msg-table tbody tr:nth-child(even) { background: rgba(150, 158, 180, 0.06); }
+
+/* ---- Mobile (≤640px): balik ke layout "asli" (lebar kolom mengikuti isi,
+   bukan dipaksa rata table-layout:fixed) supaya sel dengan teks panjang tidak
+   diperas jadi berbaris-baris tinggi ke bawah. Kelebihan lebarnya ditangani
+   dengan scroll horizontal di .msg-table-wrap, bukan meremas kolom. ---- */
+@media (max-width: 640px) {
+  .msg-text table.msg-table {
+    table-layout: auto;
+    width: max-content;
+    min-width: 100%;
+  }
+  .msg-text table.msg-table th,
+  .msg-text table.msg-table td {
+    white-space: normal;
+    min-width: 8.5rem;
+    max-width: 22rem;
+  }
+  .msg-text table.msg-table thead th {
+    white-space: nowrap;
+    position: sticky;
+    top: 0;
+  }
+}
+
+/* Sinyal visual halus bahwa tabel bisa digeser ke samping di layar sempit —
+   gradient tipis nempel di tepi kanan wrap, memudar begitu user sudah scroll
+   penuh ke kanan (di-toggle via class .is-scrolled-end lewat JS, lihat chat.js).
+   Cuma aktif di mobile karena di desktop tabel sudah di-fit, tidak ada yang
+   perlu digeser. */
+@media (max-width: 640px) {
+  .msg-text .msg-table-wrap { position: relative; }
+  .msg-text .msg-table-wrap::after {
+    content: "";
+    position: sticky;
+    top: 0;
+    right: 0;
+    float: right;
+    width: 18px;
+    height: 100%;
+    margin-left: -18px;
+    pointer-events: none;
+    background: linear-gradient(to right, transparent, rgba(10,12,17,0.55));
+    opacity: 1;
+    transition: opacity .2s ease;
+  }
+  .msg-text .msg-table-wrap.is-scrolled-end::after { opacity: 0; }
+}
 
 /* ---- Link [label](url) ---- */
 .msg-text a.msg-link {

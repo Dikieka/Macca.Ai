@@ -4,6 +4,7 @@ import { callApi, ApiError } from "../lib/api.js";
 import { showToast, setLoading } from "../lib/state.js";
 import { escapeHtml, formatRelativeTime, markActiveSidebarLink, applyRoleBasedNav } from "../lib/render.js";
 import { initSidebarResize, initSidebarMobile, loadSidebarHistory } from "../lib/sidebar.js";
+import { getCached, setCached } from "../lib/apiCache.js";
 
 const session = requireAuth();
 if (session) init();
@@ -19,30 +20,44 @@ function init() {
   loadProjects();
 }
 
+function renderProjectGrid_(grid, projects) {
+  if (!projects?.length) {
+    grid.innerHTML = `
+      <div class="doc-card p-8 text-center sm:col-span-2">
+        <i data-lucide="folder-plus" class="w-8 h-8 mx-auto text-ink-500"></i>
+        <p class="text-sm text-ink-700 mt-3">Belum ada proyek. Buat proyek pertamamu untuk mengelompokkan chat dan dokumen.</p>
+      </div>`;
+    lucide.createIcons();
+    return;
+  }
+  grid.innerHTML = projects.map((p) => `
+    <a href="project.html?projectId=${encodeURIComponent(p.id)}" class="doc-card p-5 block hover:-translate-y-0.5 transition-transform">
+      <div class="flex items-center justify-between">
+        <span class="layer-badge text-sage-500">${escapeHtml(p.type || "umum").toUpperCase()}</span>
+        <span class="text-xs text-ink-500">${formatRelativeTime(p.updatedAt)}</span>
+      </div>
+      <p class="font-display font-semibold text-ink-900 mt-3">${escapeHtml(p.name)}</p>
+      <p class="text-xs text-ink-500 mt-1 line-clamp-2">${escapeHtml(p.description || "Tidak ada deskripsi.")}</p>
+    </a>`).join("");
+}
+
+/**
+ * PERBAIKAN cache: tampilkan cache "projects_all" dulu (instan, kalau ada
+ * dari kunjungan sebelumnya) lalu tetap fetch getProjects seperti biasa di
+ * background untuk validasi. Kalau baru saja createProject (lihat bindModal
+ * di bawah), fetch ulang ini otomatis dapat data terbaru dan meng-update cache.
+ */
 async function loadProjects() {
   const grid = document.getElementById("projectGrid");
+  const cached = getCached("projects_all");
+  if (cached) renderProjectGrid_(grid, cached);
+
   try {
     const projects = await callApi("getProjects", {});
-    if (!projects?.length) {
-      grid.innerHTML = `
-        <div class="doc-card p-8 text-center sm:col-span-2">
-          <i data-lucide="folder-plus" class="w-8 h-8 mx-auto text-ink-500"></i>
-          <p class="text-sm text-ink-700 mt-3">Belum ada proyek. Buat proyek pertamamu untuk mengelompokkan chat dan dokumen.</p>
-        </div>`;
-      lucide.createIcons();
-      return;
-    }
-    grid.innerHTML = projects.map((p) => `
-      <a href="project.html?projectId=${encodeURIComponent(p.id)}" class="doc-card p-5 block hover:-translate-y-0.5 transition-transform">
-        <div class="flex items-center justify-between">
-          <span class="layer-badge text-sage-500">${escapeHtml(p.type || "umum").toUpperCase()}</span>
-          <span class="text-xs text-ink-500">${formatRelativeTime(p.updatedAt)}</span>
-        </div>
-        <p class="font-display font-semibold text-ink-900 mt-3">${escapeHtml(p.name)}</p>
-        <p class="text-xs text-ink-500 mt-1 line-clamp-2">${escapeHtml(p.description || "Tidak ada deskripsi.")}</p>
-      </a>`).join("");
+    setCached("projects_all", projects);
+    renderProjectGrid_(grid, projects);
   } catch (err) {
-    grid.innerHTML = `<p class="text-sm text-clay-500 sm:col-span-2">Gagal memuat proyek.</p>`;
+    if (!cached) grid.innerHTML = `<p class="text-sm text-clay-500 sm:col-span-2">Gagal memuat proyek.</p>`;
   }
 }
 

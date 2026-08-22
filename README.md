@@ -1,5 +1,31 @@
 # Macca.Ai — Static Frontend Edition
 
+## Optimasi Token (ringkas)
+
+Beberapa lapisan hemat-token yang sudah aktif di `router.gs`, tanpa mengorbankan
+kecepatan/kualitas jawaban:
+
+1. **Cache respons AI** (`CacheService`, TTL 3 jam) — permintaan yang isi prompt-nya
+   identik persis (model + system prompt + histori + pesan) langsung dikembalikan dari
+   cache tanpa memanggil provider AI lagi. Berguna untuk klik ganda, tombol
+   "Regenerate" tanpa ganti apa pun, atau pertanyaan generik yang berulang. Cache-nya
+   otomatis "batal" begitu ada perubahan sekecil apa pun di konteks (dokumen baru,
+   memory baru, pesan beda) karena kunci cache-nya dihitung dari SELURUH isi prompt.
+2. **Pemangkasan potongan dokumen/RAG** — tiap potongan (chunk) dokumen atau memory yang
+   disisipkan ke prompt dibatasi ±1400 karakter (`truncateChunk_`), supaya dokumen yang
+   sangat panjang tidak membuat prompt membengkak tak terkendali; bagian yang paling
+   relevan (skor similarity/urutan chunk) tetap yang diprioritaskan masuk.
+3. **Riwayat percakapan dibatasi** — hanya 12 pesan terakhir per chat yang disertakan
+   sebagai konteks (`findRows("messages", ..., 12)` di `chat.gs`), bukan seluruh riwayat.
+4. **RAG hanya ambil yang relevan** — `searchDocumentChunks` sudah membuang hasil dengan
+   skor kemiripan < 0.15, jadi dokumen yang tidak nyambung tidak ikut membebani prompt.
+
+Ide lanjutan yang belum diimplementasikan (opsional untuk iterasi berikutnya):
+ringkasan otomatis (rolling summary) untuk chat yang sangat panjang, dan semantic cache
+berbasis embedding (bukan cuma exact-match) supaya pertanyaan yang MIRIP — bukan cuma
+identik — juga bisa kena cache.
+
+
 AI Document Workspace: HTML/CSS/JS murni (tanpa framework) di GitHub Pages,
 dengan Google Apps Script sebagai backend dan Google Sheets sebagai database.
 
@@ -64,6 +90,7 @@ macca-ai/
 | `getMemory`, `saveMemory`, `deleteMemory` | Personal/project memory |
 | `getProjects`, `createProject`, `getProjectDetail`, `updateProject` | Workspace project + privasi per-proyek |
 | `getUsage`, `routeModel`, `listModels` | Token tracking & AI router |
+| `paraphrase` | Tulis ulang teks (fitur "Parafrase" di sidebar) |
 | `adminListUsers`, `adminUpdateUserRole`, `adminUpdateUserStatus`, `adminListModels`, `adminUpsertModel`, `adminToggleModel`, `adminDeleteModel`, `adminStats` | Panel admin (khusus role `admin`) |
 
 ## 1. Setup Google Sheets + Apps Script (backend)
@@ -225,6 +252,71 @@ JavaScript origins di langkah 3.3 supaya Google Sign-In berfungsi saat dites lok
 3. Selesai — landing page akan tampil di `https://<username>.github.io/<repo>/`.
 4. Jangan lupa tambahkan URL GitHub Pages itu ke Authorized JavaScript origins
    (langkah 3.3) — tanpa ini tombol Google Sign-In akan gagal di production.
+
+## Model AI 100% Gratis (perbaikan: hindari `openrouter/auto`)
+
+Sebelumnya default `m-fast` di `model_registry` memakai slug `openrouter/auto`. Ini
+**bukan model gratis beneran** — itu meta-router milik OpenRouter yang boleh mengarahkan
+requestmu ke model BERBAYAR kapan saja demi kualitas, dan kamu tetap kena tagihan sesuai
+harga model yang dipilihnya (lihat dokumentasi resmi OpenRouter soal Auto Router). Kolom
+`cost_input`/`cost_output` di tab `ai_requests` juga tidak pernah mencatat biaya ini, jadi
+biaya bisa lolos tanpa disadari kalau akun OpenRouter kamu punya saldo.
+
+Sudah diperbaiki:
+
+- **`m-fast` sekarang pakai model `:free` eksplisit** (`meta-llama/llama-3.2-3b-instruct:free`),
+  bukan `openrouter/auto` — biayanya dijamin Rp0 selama slug itu masih aktif di OpenRouter.
+- **`routeModel()` (`router.gs`) diperkuat**: kalau tidak ada model enabled yang
+  capabilities-nya cocok dengan route (`fast`/`smart`/`deep`) — misalnya karena kamu
+  men-disable sebuah model lewat Admin panel — sekarang dicatat ke `console.error` (kelihatan
+  di log Apps Script) dan otomatis mencoba model gratis paling mumpuni yang masih tersedia,
+  bukan asal ambil baris pertama di sheet. Fallback darurat terakhir (kalau registry benar-benar
+  kosong) juga diganti ke model `:free` eksplisit, bukan `openrouter/auto` lagi.
+- Kalau spreadsheet kamu sudah pernah dipakai SEBELUM perbaikan ini, jalankan fungsi
+  **`migrateAwayFromAutoRouter`** sekali dari editor Apps Script — otomatis mengganti baris
+  `model_slug = "openrouter/auto"` yang lama ke model `:free` eksplisit tanpa menyentuh
+  baris lain.
+- **Cek tab `ai_requests` / halaman Admin secara berkala**: kalau kolom `model` untuk
+  banyak baris konsisten sama padahal kolom `route`-nya campur (`fast`/`smart`/`deep`),
+  itu tanda `routeModel()` gagal mencocokkan capability — biasanya karena model yang
+  seharusnya menangani route tertentu (`m-smart`/`m-deep-fallback`) ter-disable. Aktifkan
+  lagi lewat **Admin > Model AI**.
+
+## Sumber Akademik Terverifikasi & Ensemble Model Gratis (anti-halusinasi sitasi)
+
+Supaya Macca tidak "mengarang" judul jurnal/nama penulis/DOI saat membantu tugas
+akademik (skripsi, landasan teori, metodologi), ditambahkan lapisan baru:
+
+- **`apps-script/handlers/academicSearch.gs`** — mencari sumber akademik NYATA lewat
+  **OpenAlex** (utama) dan **Semantic Scholar** (fallback), keduanya gratis & tanpa API
+  key. Google Scholar sengaja TIDAK dipakai karena tidak punya API resmi dan scraping-nya
+  melanggar ToS Google.
+- Pencarian ini otomatis jalan kalau pesan chat terdeteksi sebagai pertanyaan akademik
+  (`classifyTask_` di `chat.gs` — kata kunci "skripsi", "jurnal", "metodologi", "landasan
+  teori"). Hasilnya disisipkan ke system prompt (`router.gs`) dengan instruksi TEGAS: AI
+  hanya boleh mengutip sumber yang benar-benar ada di daftar itu, dan wajib jujur bilang
+  "tidak ditemukan" kalau memang tidak ada sumber relevan — dilarang keras mengarang.
+- **Ensemble/combine model gratis** (`generateAcademicEnsembleReply_` di `router.gs`):
+  khusus pertanyaan akademik, beberapa model GRATIS (ditandai `academic` di kolom
+  `capabilities` tab `model_registry`) dipanggil SEKALIGUS (paralel lewat
+  `UrlFetchApp.fetchAll`), lalu satu model gratis lagi menggabungkan draf-drafnya jadi
+  satu jawaban akhir yang saling menambal kekurangan tiap model kecil — sambil tetap
+  membuang sitasi apapun yang tidak ada di daftar sumber terverifikasi. Kalau ensemble
+  gagal total, otomatis fallback ke alur single-model biasa (tidak ada yang rusak untuk
+  pertanyaan non-akademik).
+- Kalau spreadsheet kamu sudah pernah dipakai SEBELUM fitur ini ditambahkan, jalankan
+  fungsi **`migrateAcademicEnsemble`** sekali dari editor Apps Script untuk menandai
+  model existing dengan capability `academic` dan menambah satu model gratis ketiga.
+- Daftar model gratis di OpenRouter **berotasi cukup sering** (model bisa ditarik/ganti
+  slug kapan saja) — kalau salah satu model ensemble sering gagal (cek tab `ai_requests`
+  atau halaman Admin), ganti `model_slug`-nya lewat **Admin > Model AI**, tanpa perlu
+  ubah kode. Cek daftar terkini di [openrouter.ai/models](https://openrouter.ai/models).
+- (Opsional) isi `ACADEMIC_CONTACT_EMAIL` di Script Properties dengan email kamu supaya
+  request ke OpenAlex masuk "polite pool" (rate limit lebih tinggi & stabil).
+- Balasan chat sekarang juga mengembalikan `usedAcademicSources` (daftar sumber yang
+  benar-benar dipakai), ditampilkan di UI chat sebagai kotak "Referensi" dengan link
+  DOI yang bisa diklik, supaya user bisa memverifikasi sendiri — bukan cuma percaya
+  teks AI begitu saja.
 
 ## Backup / Ekspor data ke Excel
 

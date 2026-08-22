@@ -3,6 +3,8 @@
 // known_limitations soal CORS lintas domain GitHub Pages <-> Apps Script).
 
 import { CONFIG } from "./config.js";
+import { clearCachedChatHistory } from "./historyCache.js";
+import { clearAllApiCaches } from "./apiCache.js";
 
 export function getSession() {
   try {
@@ -30,6 +32,12 @@ export function setSession({ token, user }) {
 }
 
 export function clearSession() {
+  // PENTING: bersihkan cache SEBELUM session dihapus, karena fungsi cache di
+  // bawah butuh user id dari session yang masih aktif untuk tahu key mana
+  // yang harus dihapus. Kalau urutannya dibalik, yang ke-hapus malah key
+  // "anon" (salah), bukan key milik user yang logout.
+  clearCachedChatHistory();
+  clearAllApiCaches();
   localStorage.removeItem(CONFIG.SESSION_STORAGE_KEY);
 }
 

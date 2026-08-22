@@ -17,6 +17,7 @@
 
 import { callApi } from "./api.js";
 import { escapeHtml, formatRelativeTime } from "./render.js";
+import { getCachedChatHistory, setCachedChatHistory } from "./historyCache.js";
 
 const WIDTH_STORAGE_KEY = "macca_sidebar_width";
 const MIN_WIDTH = 220;
@@ -139,29 +140,49 @@ export function initSidebarMobile() {
   });
 }
 
+function renderSidebarChatList_(listEl, chats, activeChatId) {
+  if (!chats?.length) {
+    listEl.innerHTML = `<p class="px-3 text-xs text-ink-500/70">Belum ada percakapan</p>`;
+    return;
+  }
+  listEl.innerHTML = chats.map((c) => `
+    <a href="chat.html?chatId=${encodeURIComponent(c.id)}"
+       class="flex flex-col gap-0.5 px-3 py-2 rounded-md text-xs truncate ${c.id === activeChatId ? "bg-paper-100 text-ink-900 font-semibold" : "text-ink-700 hover:bg-paper-100 hover:text-ink-900"}">
+      <span class="truncate">${escapeHtml(c.title || "Percakapan tanpa judul")}</span>
+      <span class="text-[10px] font-mono text-ink-500/70">${escapeHtml(formatRelativeTime(c.updatedAt || c.createdAt))}</span>
+    </a>`).join("");
+}
+
 /**
  * Isi #chatList dengan riwayat chat. Dipakai halaman NON-chat supaya riwayat
  * tetap kelihatan di sidebar walau sedang membuka Projects/Documents/Memory
  * (lihat #3). Link mengarah ke chat.html?chatId=... (navigasi biasa, reload
  * halaman penuh) — cukup untuk halaman-halaman ini karena mereka memang bukan
  * konteks chat aktif.
+ *
+ * PERBAIKAN cache (stale-while-revalidate, lihat historyCache.js): kalau ada
+ * cache dari halaman sebelumnya, tampilkan LANGSUNG (tanpa skeleton) supaya
+ * pindah menu terasa instan/statis, lalu tetap fetch getChatHistory seperti
+ * biasa di background untuk menjaga data tetap akurat. Kalau tidak ada cache
+ * (pertama kali buka / cache kosong), perilakunya sama seperti sebelumnya:
+ * skeleton bawaan HTML tampil sampai fetch selesai.
  */
 export async function loadSidebarHistory(activeChatId = null) {
   const listEl = document.getElementById("chatList");
   if (!listEl) return;
+
+  const cached = getCachedChatHistory();
+  if (cached) renderSidebarChatList_(listEl, cached, activeChatId);
+
   try {
     const chats = await callApi("getChatHistory", { limit: 30 });
-    if (!chats?.length) {
-      listEl.innerHTML = `<p class="px-3 text-xs text-ink-500/70">Belum ada percakapan</p>`;
-      return;
-    }
-    listEl.innerHTML = chats.map((c) => `
-      <a href="chat.html?chatId=${encodeURIComponent(c.id)}"
-         class="flex flex-col gap-0.5 px-3 py-2 rounded-md text-xs truncate ${c.id === activeChatId ? "bg-paper-100 text-ink-900 font-semibold" : "text-ink-700 hover:bg-paper-100 hover:text-ink-900"}">
-        <span class="truncate">${escapeHtml(c.title || "Percakapan tanpa judul")}</span>
-        <span class="text-[10px] font-mono text-ink-500/70">${escapeHtml(formatRelativeTime(c.updatedAt || c.createdAt))}</span>
-      </a>`).join("");
+    setCachedChatHistory(chats);
+    renderSidebarChatList_(listEl, chats, activeChatId);
   } catch {
-    listEl.innerHTML = `<p class="px-3 text-xs text-clay-500">Gagal memuat riwayat</p>`;
+    // Kalau sebelumnya sudah sempat render dari cache, biarkan tetap tampil —
+    // gagal revalidate di background tidak boleh menghapus apa yang sudah
+    // kelihatan (fail silently). Hanya tampilkan pesan error kalau memang
+    // belum ada apa-apa untuk ditampilkan sama sekali.
+    if (!cached) listEl.innerHTML = `<p class="px-3 text-xs text-clay-500">Gagal memuat riwayat</p>`;
   }
 }

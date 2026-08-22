@@ -110,8 +110,6 @@ const HEADING_RE = /^\s{0,3}(#{1,6})\s+(.+?)\s*#*\s*$/;
 const HR_RE = /^\s*([-*_])\s*(?:\1\s*){2,}$/;
 const BLOCKQUOTE_RE = /^\s*&gt;\s?(.*)$/; // '>' sudah jadi '&gt;' setelah escapeHtml()
 const CODE_FENCE_RE = /^\s*```\s*([\w+-]*)\s*$/;
-
-/** Pecah satu baris tabel "| a | b |" jadi array sel yang sudah di-trim. */
 function splitTableRow_(line) {
   let s = line.trim();
   if (s.startsWith("|")) s = s.slice(1);
@@ -263,6 +261,141 @@ export function renderFormattedText(raw = "") {
         i++;
       }
       blocks.push(`<ol class="pl-5 my-2 space-y-1 marker:text-ink-500" style="list-style-type:lower-alpha">${items.join("")}</ol>`);
+      continue;
+    }
+
+    if (line.trim() === "") {
+      flushPara();
+      i++;
+      continue;
+    }
+
+    paraBuf.push(applyInlineFormatting_(line));
+    i++;
+  }
+  flushPara();
+  return blocks.join("") || "";
+}
+
+/**
+ * Sama seperti renderFormattedText di atas (parsing markdown: heading, bold/italic,
+ * list, tabel, blockquote, code) TAPI outputnya HTML "polos" — tag semantik murni
+ * tanpa class Tailwind. Dipakai khusus untuk export Word/PDF (lihat pages/chat.js ->
+ * exportToWord_), karena Tailwind tidak ikut ter-load saat file .doc dibuka di Microsoft
+ * Word/LibreOffice (bukan browser, tidak ada CDN Tailwind) — kalau tetap pakai class
+ * Tailwind seperti renderFormattedText, semua heading/list/tabel akan tampil TANPA
+ * styling apa pun di Word (rata tanpa hierarki, persis masalah "tidak rapi" yang mau
+ * diperbaiki). Styling di sini disuntik lewat <style> berbasis tag selector di
+ * exportToWord_, yang DIPAHAMI Word saat mengonversi HTML -> dokumen (trik mso yang sama
+ * dengan yang sudah dipakai di exportToExcel_).
+ */
+export function renderMarkdownToWordHtml(raw = "") {
+  const lines = escapeHtml(raw).split(/\r?\n/);
+  const blocks = [];
+  let paraBuf = [];
+
+  const flushPara = () => {
+    if (paraBuf.length) {
+      blocks.push(`<p>${paraBuf.join("<br>")}</p>`);
+      paraBuf = [];
+    }
+  };
+
+  let i = 0;
+  while (i < lines.length) {
+    const line = lines[i];
+
+    if (CODE_FENCE_RE.test(line)) {
+      flushPara();
+      i++;
+      const codeLines = [];
+      while (i < lines.length && !CODE_FENCE_RE.test(lines[i])) {
+        codeLines.push(lines[i]);
+        i++;
+      }
+      if (i < lines.length) i++;
+      blocks.push(`<pre><code>${codeLines.join("\n")}</code></pre>`);
+      continue;
+    }
+
+    if (line.includes("|") && isTableSeparatorRow_(lines[i + 1])) {
+      flushPara();
+      const headerCells = splitTableRow_(line);
+      const aligns = splitTableRow_(lines[i + 1]).map(tableCellAlign_);
+      const alignAttr = (idx) => (aligns[idx] ? ` style="text-align:${aligns[idx]}"` : "");
+      i += 2;
+      const bodyRows = [];
+      while (i < lines.length && lines[i].trim() !== "" && lines[i].includes("|")) {
+        bodyRows.push(splitTableRow_(lines[i]));
+        i++;
+      }
+      const thead = `<thead><tr>${headerCells
+        .map((c, idx) => `<th${alignAttr(idx)}>${applyInlineFormatting_(c)}</th>`)
+        .join("")}</tr></thead>`;
+      const tbody = `<tbody>${bodyRows
+        .map((row) => `<tr>${row.map((c, idx) => `<td${alignAttr(idx)}>${applyInlineFormatting_(c)}</td>`).join("")}</tr>`)
+        .join("")}</tbody>`;
+      blocks.push(`<table>${thead}${tbody}</table>`);
+      continue;
+    }
+
+    if (HEADING_RE.test(line)) {
+      flushPara();
+      const m = line.match(HEADING_RE);
+      const level = m[1].length;
+      blocks.push(`<h${level}>${applyInlineFormatting_(m[2])}</h${level}>`);
+      i++;
+      continue;
+    }
+
+    if (HR_RE.test(line)) {
+      flushPara();
+      blocks.push(`<hr>`);
+      i++;
+      continue;
+    }
+
+    if (BLOCKQUOTE_RE.test(line)) {
+      flushPara();
+      const items = [];
+      while (i < lines.length && BLOCKQUOTE_RE.test(lines[i])) {
+        items.push(applyInlineFormatting_(lines[i].match(BLOCKQUOTE_RE)[1]));
+        i++;
+      }
+      blocks.push(`<blockquote>${items.join("<br>")}</blockquote>`);
+      continue;
+    }
+
+    if (BULLET_RE.test(line)) {
+      flushPara();
+      const items = [];
+      while (i < lines.length && BULLET_RE.test(lines[i])) {
+        items.push(`<li>${applyInlineFormatting_(lines[i].match(BULLET_RE)[1])}</li>`);
+        i++;
+      }
+      blocks.push(`<ul>${items.join("")}</ul>`);
+      continue;
+    }
+
+    if (NUMBERED_RE.test(line)) {
+      flushPara();
+      const items = [];
+      while (i < lines.length && NUMBERED_RE.test(lines[i])) {
+        items.push(`<li>${applyInlineFormatting_(lines[i].match(NUMBERED_RE)[2])}</li>`);
+        i++;
+      }
+      blocks.push(`<ol>${items.join("")}</ol>`);
+      continue;
+    }
+
+    if (LETTERED_RE.test(line)) {
+      flushPara();
+      const items = [];
+      while (i < lines.length && LETTERED_RE.test(lines[i])) {
+        items.push(`<li>${applyInlineFormatting_(lines[i].match(LETTERED_RE)[2])}</li>`);
+        i++;
+      }
+      blocks.push(`<ol style="list-style-type:lower-alpha">${items.join("")}</ol>`);
       continue;
     }
 

@@ -4,6 +4,17 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Masuk — Macca.Ai</title>
+<meta name="description" content="Masuk ke akun Macca.Ai buat lanjutin ngobrol sama AI yang inget dokumen, proyek, dan gaya kerjamu." />
+<meta property="og:type" content="website" />
+<meta property="og:title" content="Masuk — Macca.Ai" />
+<meta property="og:description" content="Masuk ke akun Macca.Ai buat lanjutin ngobrol sama AI yang inget dokumen, proyek, dan gaya kerjamu." />
+<meta property="og:image" content="../assets/icons/icon-512.png" />
+<meta property="og:url" content="https://macca.ai/pages/login.html" />
+<meta property="og:site_name" content="Macca.Ai" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="Masuk — Macca.Ai" />
+<meta name="twitter:description" content="Masuk ke akun Macca.Ai buat lanjutin ngobrol sama AI yang inget dokumen, proyek, dan gaya kerjamu." />
+<meta name="twitter:image" content="../assets/icons/icon-512.png" />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Press+Start+2P&display=swap" rel="stylesheet">
 <script src="https://cdn.tailwindcss.com"></script>
@@ -108,6 +119,9 @@
 
       <p class="auth-reveal text-sm text-ink-700 mt-8 text-center" style="--d:.4s">
         Belum punya akun? <a href="register.html" class="font-semibold text-ink-900 hover:text-amber-600 transition-colors">Daftar gratis</a>
+      </p>
+      <p class="auth-reveal text-xs text-ink-500 mt-4 text-center" style="--d:.45s">
+        <a href="privacy.html" class="hover:text-ink-900">Kebijakan Privasi</a> · <a href="terms.html" class="hover:text-ink-900">Syarat & Ketentuan</a>
       </p>
     </div>
   </div>
@@ -274,7 +288,14 @@
       // dari desain awal (360).
       function renderGoogleButton() {
         const containerWidth = googleBtnEl.parentElement.clientWidth || 360;
-        const width = Math.max(200, Math.min(360, Math.floor(containerWidth)));
+        // PERBAIKAN (tombol Google lebih sempit dari input di bawahnya): sebelumnya
+        // di-clamp maksimal 360px, padahal wadah form (.max-w-sm) lebarnya 384px dan
+        // batas maksimal asli dari Google Identity Services adalah 400px. Clamp 360
+        // itu angka sembarang yang bikin tombol SELALU 24px lebih sempit dari input
+        // email/kata sandi di bawahnya, nggak peduli lebar layar berapa pun — makanya
+        // kelihatan "nggak sejajar". Naikkan batas atas ke 400 (limit asli Google)
+        // supaya tombol bisa mengisi penuh lebar wadah, sama seperti input.
+        const width = Math.max(200, Math.min(400, Math.floor(containerWidth)));
         googleBtnEl.innerHTML = "";
         google.accounts.id.renderButton(googleBtnEl, {
           theme: "outline", size: "large", width, text: "continue_with", shape: "pill", logo_alignment: "left",

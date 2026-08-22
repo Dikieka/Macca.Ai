@@ -4,6 +4,18 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Chat — Macca.Ai</title>
+<meta name="description" content="Ruang kerja chat Macca.Ai — ngobrol sama AI yang inget dokumen dan proyekmu." />
+<meta name="robots" content="noindex, nofollow" />
+<meta property="og:type" content="website" />
+<meta property="og:title" content="Chat — Macca.Ai" />
+<meta property="og:description" content="Ruang kerja chat Macca.Ai — ngobrol sama AI yang inget dokumen dan proyekmu." />
+<meta property="og:image" content="../assets/icons/icon-512.png" />
+<meta property="og:url" content="https://macca.ai/pages/chat.html" />
+<meta property="og:site_name" content="Macca.Ai" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="Chat — Macca.Ai" />
+<meta name="twitter:description" content="Ruang kerja chat Macca.Ai — ngobrol sama AI yang inget dokumen dan proyekmu." />
+<meta name="twitter:image" content="../assets/icons/icon-512.png" />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Press+Start+2P&display=swap" rel="stylesheet">
 <script src="https://cdn.tailwindcss.com"></script>
@@ -58,6 +70,9 @@
       </a>
       <a href="memory.html" class="flex items-center gap-2.5 px-3 py-2 rounded-md text-ink-500 hover:bg-paper-100 hover:text-ink-900">
         <i data-lucide="brain" class="w-4 h-4"></i> Memory
+      </a>
+      <a href="paraphrase.html" class="flex items-center gap-2.5 px-3 py-2 rounded-md text-ink-500 hover:bg-paper-100 hover:text-ink-900">
+        <i data-lucide="wand-2" class="w-4 h-4"></i> Parafrase
       </a>
       <p class="px-3 pt-5 pb-1 text-xs font-mono text-ink-500">RIWAYAT</p>
       <div id="chatList" class="space-y-0.5">
@@ -194,7 +209,7 @@
            supaya kotak ketik sejajar rapi dengan bubble chat di atasnya, bukan lebih
            lebar sendiri. Kalau kolom pesan diubah lebarnya, ubah juga angka di sini
            supaya tetap sejajar. -->
-      <form id="composerForm" class="w-full max-w-[min(56rem,94%)] mx-auto doc-card p-3.5 transition-shadow focus-within:border-lime-500/50 focus-within:shadow-[0_0_0_3px_rgba(198,255,61,0.12)]">
+      <form id="composerForm" class="w-full max-w-[min(56rem,94%)] mx-auto doc-card p-3.5">
         <!-- Quickview lampiran (perbaikan: preview foto/dokumen sebelum dikirim, mirip ChatGPT/Claude).
              #attachmentThumb menampilkan thumbnail foto ATAU ikon dokumen; progress bar tumpang tindih
              di atas thumbnail saat sedang diunggah, lalu hilang begitu selesai. -->

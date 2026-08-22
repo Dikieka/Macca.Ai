@@ -4,6 +4,17 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Daftar — Macca.Ai</title>
+<meta name="description" content="Daftar gratis di Macca.Ai dan mulai kerjain skripsi, jurnal, laporan, sampai proposal bareng AI yang beneran paham konteksmu." />
+<meta property="og:type" content="website" />
+<meta property="og:title" content="Daftar — Macca.Ai" />
+<meta property="og:description" content="Daftar gratis di Macca.Ai dan mulai kerjain skripsi, jurnal, laporan, sampai proposal bareng AI yang beneran paham konteksmu." />
+<meta property="og:image" content="../assets/icons/icon-512.png" />
+<meta property="og:url" content="https://macca.ai/pages/register.html" />
+<meta property="og:site_name" content="Macca.Ai" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="Daftar — Macca.Ai" />
+<meta name="twitter:description" content="Daftar gratis di Macca.Ai dan mulai kerjain skripsi, jurnal, laporan, sampai proposal bareng AI yang beneran paham konteksmu." />
+<meta name="twitter:image" content="../assets/icons/icon-512.png" />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Press+Start+2P&display=swap" rel="stylesheet">
 <script src="https://cdn.tailwindcss.com"></script>
@@ -104,7 +115,7 @@
         </div>
         <label class="auth-reveal flex items-start gap-2 text-xs text-ink-700" style="--d:.4s">
           <input id="terms" type="checkbox" required class="mt-0.5" />
-          Saya menyetujui Ketentuan Layanan & Kebijakan Privasi Macca.Ai.
+          Saya menyetujui <a href="terms.html" target="_blank" class="underline hover:text-ink-900">Ketentuan Layanan</a> & <a href="privacy.html" target="_blank" class="underline hover:text-ink-900">Kebijakan Privasi</a> Macca.Ai.
         </label>
         <button id="submitBtn" type="submit" class="auth-reveal btn-ink w-full rounded-md py-3 text-sm font-semibold" style="--d:.45s">Buat Akun</button>
       </form>
@@ -289,11 +300,18 @@
       // dihitung dari lebar kontainer form yang sebenarnya (elemen ini
       // sendiri tidak punya lebar sebelum tombol dirender, makanya diukur
       // dari wrapper terdekat yang sudah punya lebar pasti), dibatasi supaya
-      // tidak lebih kecil dari batas minimum Google (200) atau lebih besar
-      // dari desain awal (360).
+      // tidak lebih kecil dari batas minimum Google (200).
+      //
+      // PERBAIKAN #2 (tombol lebih sempit dari input di bawahnya): batas atas
+      // sebelumnya 360px itu angka sembarang, padahal wadah form (.max-w-sm)
+      // lebarnya 384px dan batas maksimal ASLI dari Google Identity Services
+      // adalah 400px. Akibatnya tombol SELALU 24px lebih sempit daripada input
+      // email/kata sandi di bawahnya, di layar manapun. Naikkan ke 400 (limit
+      // asli Google) supaya tombol bisa mengisi penuh lebar wadah, sejajar
+      // dengan input.
       function renderGoogleButton() {
         const containerWidth = googleBtnEl.parentElement.clientWidth || 360;
-        const width = Math.max(200, Math.min(360, Math.floor(containerWidth)));
+        const width = Math.max(200, Math.min(400, Math.floor(containerWidth)));
         googleBtnEl.innerHTML = "";
         google.accounts.id.renderButton(googleBtnEl, {
           theme: "outline", size: "large", width, text: "signup_with", shape: "pill", logo_alignment: "left",
