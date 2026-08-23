@@ -128,8 +128,13 @@ async function loadModels() {
     el.innerHTML = models.map((m) => `
       <div class="doc-card p-4 flex items-center justify-between gap-3 flex-wrap">
         <div class="min-w-0">
-          <p class="text-sm font-mono font-medium truncate">${escapeHtml(m.modelSlug)}</p>
-          <p class="text-xs text-ink-500 mt-0.5">${escapeHtml(m.capabilities || "")} ${m.free === true || m.free === "TRUE" ? "· gratis" : ""}</p>
+          <p class="text-sm font-mono font-medium truncate">
+            <span class="text-ink-500">${escapeHtml(m.provider || "openrouter")}/</span>${escapeHtml(m.modelSlug)}
+          </p>
+          <p class="text-xs text-ink-500 mt-0.5">
+            ${escapeHtml(m.capabilities || "")} ${m.free === true || m.free === "TRUE" ? "· gratis" : ""}
+            ${m.onCooldown ? `<span class="text-clay-500 font-medium">· dialihkan sementara sampai ${escapeHtml(new Date(m.cooldownUntil).toLocaleTimeString("id-ID"))} (kena rate-limit/kuota habis)</span>` : ""}
+          </p>
         </div>
         <div class="flex items-center gap-2 shrink-0">
           <label class="flex items-center gap-1.5 text-xs text-ink-700">
@@ -193,7 +198,11 @@ function bindModelModal() {
         capabilities: document.getElementById("modelCapabilities").value.trim(),
         free: document.getElementById("modelFree").checked,
         enabled: document.getElementById("modelEnabled").checked,
-        provider: "openrouter",
+        // PERBAIKAN (multi-provider, Agustus 2026): dulu selalu hardcode "openrouter" —
+        // kalau tidak diperbaiki, mengedit model Groq/Gemini manapun lewat form ini akan
+        // diam-diam mengubah provider-nya balik ke OpenRouter. Sekarang diambil dari
+        // dropdown provider yang baru (lihat pages/admin.html).
+        provider: document.getElementById("modelProvider").value,
       });
       showToast("Model tersimpan.", "success");
       modal.classList.add("hidden");
@@ -208,6 +217,7 @@ function bindModelModal() {
 
 function openModelModal(model) {
   document.getElementById("modelId").value = model?.id || "";
+  document.getElementById("modelProvider").value = model?.provider || "openrouter";
   document.getElementById("modelSlug").value = model?.modelSlug || "";
   document.getElementById("modelCapabilities").value = model?.capabilities || "";
   document.getElementById("modelFree").checked = model ? (model.free === true || model.free === "TRUE") : true;

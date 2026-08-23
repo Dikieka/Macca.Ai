@@ -122,12 +122,26 @@
 <div id="modelModal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-50 grid place-items-center px-6">
   <div class="doc-card bg-paper-50 w-full max-w-md p-6">
     <h2 class="font-display text-lg font-semibold text-ink-900">Model AI</h2>
-    <p class="text-xs text-ink-500 mt-1">Slug model harus sesuai daftar di <a href="https://openrouter.ai/models" target="_blank" rel="noopener" class="underline">openrouter.ai/models</a>.</p>
+    <p class="text-xs text-ink-500 mt-1">Slug model harus sesuai daftar model dari provider yang dipilih (lihat link di bawah tiap provider).</p>
     <form id="modelForm" class="mt-4 space-y-3">
       <input type="hidden" id="modelId" />
       <div>
+        <label class="text-sm font-medium text-ink-900">Provider</label>
+        <select id="modelProvider"
+          class="mt-1.5 w-full rounded-md border border-[var(--line)] bg-paper-100 px-3.5 py-2.5 text-sm outline-none focus:border-lime-500">
+          <option value="openrouter">OpenRouter</option>
+          <option value="groq">Groq</option>
+          <option value="gemini">Google Gemini</option>
+        </select>
+        <p class="text-xs text-ink-500 mt-1">
+          Cek slug model terkini: <a href="https://openrouter.ai/models" target="_blank" rel="noopener" class="underline">openrouter.ai/models</a> ·
+          <a href="https://console.groq.com/docs/models" target="_blank" rel="noopener" class="underline">console.groq.com/docs/models</a> ·
+          <a href="https://ai.google.dev/gemini-api/docs/models" target="_blank" rel="noopener" class="underline">ai.google.dev/gemini-api/docs/models</a>
+        </p>
+      </div>
+      <div>
         <label class="text-sm font-medium text-ink-900">Model slug</label>
-        <input id="modelSlug" type="text" required placeholder="mis. meta-llama/llama-3.3-70b-instruct:free"
+        <input id="modelSlug" type="text" required placeholder="mis. meta-llama/llama-3.3-70b-instruct:free (OpenRouter) atau llama-3.1-8b-instant (Groq)"
           class="mt-1.5 w-full rounded-md border border-[var(--line)] bg-paper-100 px-3.5 py-2.5 text-sm outline-none focus:border-lime-500" />
       </div>
       <div>

@@ -50,6 +50,28 @@ let activeGeneration = null; // { controller: AbortController, stopTypingRequest
 // dekat kode sidebar chat list, sudah dihapus supaya tidak dobel.)
 let chatListCache = getCachedChatHistory() || [];
 
+// PERBAIKAN (chat blank + "ReferenceError: Cannot access 'MODEL_STATUS_STYLE_'
+// before initialization" di console): pola TDZ yang SAMA dengan chatListCache di
+// atas. MODEL_STATUS_STYLE_ sebelumnya dideklarasikan dengan `const` jauh di bawah
+// (dekat renderModelOptions_), TAPI init() -> bindModelPicker() dipanggil duluan di
+// baris berikutnya, dan kalau daftar model AI sudah pernah ke-cache dari kunjungan
+// sebelumnya (getCached("models") tidak null), renderModelOptions_() langsung
+// dipanggil SECARA SINKRON saat itu juga -> mengakses MODEL_STATUS_STYLE_ sebelum
+// baris deklarasi aslinya sempat dieksekusi -> ReferenceError. Error ini terjadi
+// SEBELUM lucide.createIcons() & init() lain sempat lanjut jalan, jadi sisa init()
+// (loadChatList, loadChat, dst) ikut berhenti diam-diam -> halaman chat kelihatan
+// blank total. Kalau tidak ada cache model (kunjungan pertama), bug ini tidak
+// muncul karena renderModelOptions_ baru dipanggil belakangan lewat .then() promise,
+// setelah baris deklarasi aslinya kelar dieksekusi -> makanya sebelumnya kelihatan
+// "kadang muncul kadang enggak". Fix: pindahkan deklarasinya ke sini, SEBELUM
+// init() dipanggil. (Deklarasi ganda di bawah, dekat renderModelOptions_, sudah
+// dihapus supaya tidak dobel.)
+const MODEL_STATUS_STYLE_ = {
+  available: { dot: "bg-lime-500", text: "text-ink-500" },
+  limited: { dot: "bg-amber-500", text: "text-amber-500" },
+  config_error: { dot: "bg-red-500", text: "text-red-500" },
+};
+
 if (session) init();
 
 async function init() {
@@ -234,36 +256,64 @@ function bindModelPicker() {
   const cachedModels = getCached("models");
   if (cachedModels) renderModelOptions_(menu, label, cachedModels);
 
-  callApi("listModels", {})
-    .then((models) => {
-      setCached("models", models);
-      renderModelOptions_(menu, label, models);
-    })
-    .catch(() => {
-      if (!cachedModels) renderModelOptions_(menu, label, []);
-    });
+  const fetchModels = () =>
+    callApi("listModels", {})
+      .then((models) => {
+        setCached("models", models);
+        renderModelOptions_(menu, label, models);
+      })
+      .catch(() => {
+        if (!cachedModels) renderModelOptions_(menu, label, []);
+      });
+
+  fetchModels();
+
+  // PERBAIKAN (status limit/cooldown per model dari router.gs BERUBAH kapan saja tanpa
+  // user reload halaman — mis. model yang tadinya "limited" sudah pulih 30 menit kemudian):
+  // refresh daftar model tiap kali menu dibuka (bukan cuma sekali saat halaman chat
+  // pertama dimuat), supaya badge status yang ditampilkan tidak basi.
+  btn.addEventListener("click", () => {
+    if (menu.classList.contains("hidden")) fetchModels(); // fetchModels dipanggil SEBELUM toggle jalan di listener lain, badge sempat update sebelum menu kelihatan
+  });
 }
 
+// Peta status dari getModelStatusList_() (router.gs) -> warna badge di dropdown.
+// (Deklarasi MODEL_STATUS_STYLE_ dipindah ke atas file, dekat chatListCache — lihat
+// komentar PERBAIKAN di sana soal kenapa.)
 function renderModelOptions_(menu, label, models) {
-  const options = [{ modelSlug: "", free: false, isAuto: true }, ...models];
+  const options = [{ modelSlug: "", free: false, isAuto: true, status: "available" }, ...models];
 
   menu.innerHTML = options.map((m) => {
     const value = m.isAuto ? "" : m.modelSlug;
     const isActive = selectedModel === value;
     const text = m.isAuto ? "Otomatis (disarankan)" : escapeHtml(m.modelSlug);
+    const style = MODEL_STATUS_STYLE_[m.status] || MODEL_STATUS_STYLE_.available;
+    // "Otomatis" TIDAK PERNAH ditampilkan sebagai limited/error walau salah satu model di
+    // registry sedang cooldown — server (routeModel/buildModelCandidates_) sudah otomatis
+    // menghindari model yang cooldown, jadi opsi "Otomatis" ini justru pilihan PALING aman
+    // saat provider tertentu sedang bermasalah (auto-alih ke provider lain yang masih hidup).
+    const providerTag = !m.isAuto && m.providerLabel ? `<span class="text-[9px] uppercase tracking-wide text-ink-400 shrink-0">${escapeHtml(m.providerLabel)}</span>` : "";
     return `
       <button type="button" data-model-value="${escapeHtml(value)}"
+        ${!m.isAuto && m.status === "config_error" ? "disabled" : ""}
+        title="${!m.isAuto ? escapeHtml(m.statusLabel || "") : "Server otomatis pilih model yang masih tersedia"}"
         class="model-option w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md text-sm text-left transition-colors
-          ${isActive ? "bg-lime-500/10 text-lime-500" : "text-ink-900 hover:bg-paper-100"}">
+          ${isActive ? "bg-lime-500/10 text-lime-500" : "text-ink-900 hover:bg-paper-100"}
+          ${!m.isAuto && m.status === "config_error" ? "opacity-40 cursor-not-allowed" : ""}">
         ${m.isAuto ? `<i data-lucide="sparkles" class="w-3.5 h-3.5 shrink-0 ${isActive ? "text-lime-500" : "text-ink-500"}"></i>`
-                    : `<i data-lucide="cpu" class="w-3.5 h-3.5 shrink-0 ${isActive ? "text-lime-500" : "text-ink-500"}"></i>`}
+                    : `<span class="relative flex h-2 w-2 shrink-0" aria-hidden="true">
+                         <span class="absolute inline-flex h-full w-full rounded-full ${style.dot} ${m.status === "limited" ? "animate-ping opacity-60" : ""}"></span>
+                         <span class="relative inline-flex rounded-full h-2 w-2 ${style.dot}"></span>
+                       </span>`}
         <span class="truncate flex-1">${text}</span>
+        ${providerTag}
         ${!m.isAuto && m.free ? `<span class="text-[10px] font-mono text-ink-500 shrink-0">gratis</span>` : ""}
         ${isActive ? `<i data-lucide="check" class="w-3.5 h-3.5 text-lime-500 shrink-0"></i>` : ""}
-      </button>`;
+      </button>
+      ${!m.isAuto && m.status !== "available" ? `<div class="px-2.5 pb-1 -mt-1 text-[10px] ${style.text}">${escapeHtml(m.statusLabel || "")}</div>` : ""}`;
   }).join("");
 
-  menu.querySelectorAll(".model-option").forEach((optBtn) => {
+  menu.querySelectorAll(".model-option:not([disabled])").forEach((optBtn) => {
     optBtn.addEventListener("click", () => {
       selectedModel = optBtn.dataset.modelValue;
       localStorage.setItem("macca_preferred_model", selectedModel);
@@ -467,8 +517,31 @@ async function loadChat(chatId) {
     });
     scrollToBottom();
   } catch (err) {
-    showToast(err instanceof ApiError ? err.message : "Gagal memuat chat.", "error");
+    // PERBAIKAN (halaman chat blank/kosong total saat gagal dimuat): sebelumnya blok
+    // catch ini cuma menampilkan toast + reset judul, TAPI #messages sudah dikosongkan
+    // duluan di atas (baris "container.innerHTML = \"\"") dan #emptyState juga sudah
+    // disembunyikan. Kalau request getChatHistory gagal (timeout, sesi kadaluarsa,
+    // Apps Script down, dll), toast bisa saja terlewat/hilang sebelum sempat dibaca,
+    // dan yang tersisa di layar cuma area chat kosong sama sekali tanpa penjelasan
+    // ataupun cara untuk pulih — persis seperti "chat tidak mau muncul". Sekarang area
+    // pesan diisi dengan status error + tombol "Coba lagi" supaya user selalu melihat
+    // sesuatu dan bisa langsung memuat ulang tanpa refresh manual.
+    const message = err instanceof ApiError ? err.message : "Gagal memuat chat.";
+    showToast(message, "error");
     document.getElementById("chatTitle").textContent = "Percakapan Baru";
+    if (chatId === currentChatId) {
+      container.innerHTML = `
+        <div class="w-full max-w-[min(56rem,94%)] mx-auto mt-16 text-center">
+          <div class="w-12 h-12 rounded-full bg-clay-500/15 grid place-items-center mx-auto mb-3">
+            <i data-lucide="alert-triangle" class="w-5 h-5 text-clay-500"></i>
+          </div>
+          <p class="text-ink-900 font-semibold">Gagal memuat percakapan</p>
+          <p class="text-ink-500 text-sm mt-1">${escapeHtml(message)}</p>
+          <button type="button" id="retryLoadChatBtn" class="btn-amber rounded-md px-4 py-2 text-sm font-semibold mt-4">Coba lagi</button>
+        </div>`;
+      lucide.createIcons();
+      document.getElementById("retryLoadChatBtn")?.addEventListener("click", () => loadChat(chatId));
+    }
   } finally {
     loadingEl.classList.add("hidden");
   }
@@ -513,6 +586,7 @@ function bindComposer() {
   autoResize();
 
   bindAttachMenu();
+  bindCameraModal_();
   bindDragAndDrop();
   bindPasteImage(input);
 
@@ -691,6 +765,112 @@ function bindAttachMenu() {
   ["fileInput", "photoInput", "cameraInput"].forEach((id) => {
     const el = document.getElementById(id);
     el.addEventListener("change", () => onPick(el));
+  });
+
+  // "Ambil foto": buka kamera perangkat langsung (lihat komentar panjang di chat.html
+  // soal kenapa <input capture> saja tidak cukup) — cameraInput dipakai sebagai fallback.
+  document.getElementById("takePhotoBtn").addEventListener("click", () => {
+    menu.classList.add("hidden");
+    openCameraCapture_();
+  });
+}
+
+/**
+ * PERBAIKAN ("Ambil foto" harus benar-benar membuka kamera perangkat, bukan galeri):
+ * pakai getUserMedia untuk live preview + jepret di dalam app (#cameraModal), bukan
+ * cuma mengandalkan atribut `capture` pada <input type=file> yang cuma "hint" dan
+ * banyak diabaikan browser (lihat komentar di chat.html). Kalau getUserMedia gagal
+ * (browser tidak dukung, izin ditolak, tidak ada kamera — umum di desktop tanpa
+ * webcam), fallback ke cameraInput.click() supaya user tetap dapat jalan alternatif.
+ */
+let cameraStream_ = null;
+let cameraFacingMode_ = "environment";
+
+async function openCameraCapture_() {
+  if (!navigator.mediaDevices?.getUserMedia) {
+    document.getElementById("cameraInput").click();
+    return;
+  }
+
+  const modal = document.getElementById("cameraModal");
+  const video = document.getElementById("cameraVideo");
+  const errorEl = document.getElementById("cameraError");
+  modal.classList.remove("hidden");
+  modal.classList.add("flex");
+  errorEl.classList.add("hidden");
+  errorEl.classList.remove("flex");
+  video.classList.remove("hidden");
+
+  const started = await startCameraStream_(cameraFacingMode_);
+  if (!started) {
+    // Gagal total (izin ditolak / tidak ada kamera sama sekali) -> tutup modal,
+    // fallback ke file input bawaan (yang di desktop akan tampil sebagai file picker
+    // biasa, dan di sebagian besar HP tetap mengarahkan ke opsi kamera OS).
+    closeCameraCapture_();
+    document.getElementById("cameraInput").click();
+  }
+}
+
+async function startCameraStream_(facingMode) {
+  stopCameraStream_();
+  const video = document.getElementById("cameraVideo");
+  const errorEl = document.getElementById("cameraError");
+  try {
+    cameraStream_ = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: facingMode } },
+      audio: false,
+    });
+    video.srcObject = cameraStream_;
+    return true;
+  } catch (err) {
+    console.error("Gagal membuka kamera:", err);
+    errorEl.textContent =
+      err?.name === "NotAllowedError"
+        ? "Izin kamera ditolak. Aktifkan izin kamera untuk situs ini di pengaturan browser, lalu coba lagi."
+        : "Tidak bisa mengakses kamera perangkat ini.";
+    errorEl.classList.remove("hidden");
+    errorEl.classList.add("flex");
+    video.classList.add("hidden");
+    return false;
+  }
+}
+
+function stopCameraStream_() {
+  cameraStream_?.getTracks().forEach((t) => t.stop());
+  cameraStream_ = null;
+}
+
+function closeCameraCapture_() {
+  stopCameraStream_();
+  document.getElementById("cameraModal").classList.add("hidden");
+  document.getElementById("cameraModal").classList.remove("flex");
+}
+
+function captureCameraPhoto_() {
+  const video = document.getElementById("cameraVideo");
+  if (!video.videoWidth) return; // stream belum siap sama sekali
+  const canvas = document.getElementById("cameraCanvas");
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  canvas.getContext("2d").drawImage(video, 0, 0, canvas.width, canvas.height);
+  canvas.toBlob((blob) => {
+    if (!blob) return showToast("Gagal mengambil foto dari kamera. Coba lagi.", "error");
+    const file = new File([blob], `kamera-${Date.now()}.jpg`, { type: "image/jpeg" });
+    closeCameraCapture_();
+    setPendingFile(file);
+  }, "image/jpeg", 0.9);
+}
+
+function bindCameraModal_() {
+  document.getElementById("cameraCloseBtn").addEventListener("click", closeCameraCapture_);
+  document.getElementById("cameraShutterBtn").addEventListener("click", captureCameraPhoto_);
+  document.getElementById("cameraSwitchBtn").addEventListener("click", () => {
+    cameraFacingMode_ = cameraFacingMode_ === "environment" ? "user" : "environment";
+    startCameraStream_(cameraFacingMode_);
+  });
+  // Tutup modal kalau user klik area gelap di luar preview (bukan tombol/video-nya sendiri).
+  document.getElementById("cameraModal").addEventListener("click", (e) => {
+    if (e.target.id === "cameraModal") closeCameraCapture_();
   });
 }
 
@@ -976,6 +1156,17 @@ async function handleSend(e) {
   input.value = "";
   input.style.height = "auto";
   pendingUploadState = null; // lepas state upload yang sudah dipakai, jangan sampai ke-abort oleh clearPendingFile di bawah
+  // PERBAIKAN (foto tidak muncul di chat sampai halaman di-refresh): localPreviewUrl di
+  // atas hanya MENYALIN STRING blob: URL-nya, bukan blob-nya sendiri — objek blob yang
+  // sebenarnya masih 1 dan sama persis dengan yang dipegang pendingPreviewUrl. clearPendingFile()
+  // di bawah ini otomatis me-revoke pendingPreviewUrl (URL.revokeObjectURL) begitu dipanggil,
+  // jadi blob URL yang SAMA yang baru saja dipakai bubble pesan (localPreviewUrl) ikut jadi
+  // tidak valid SEBELUM sempat dirender — hasilnya <img> di bubble baru gagal load diam-diam,
+  // dan thumbnail baru muncul setelah refresh (karena riwayat chat dari server pakai URL
+  // Cloudinary permanen, bukan blob: lokal). Fix: lepas kepemilikan pendingPreviewUrl DULU
+  // (tanpa revoke) sebelum clearPendingFile() jalan, supaya blob-nya tetap hidup selama
+  // dipakai bubble; browser akan bersihkan sendiri saat halaman ditinggalkan/di-reload.
+  pendingPreviewUrl = null;
   clearPendingFile();
   ["fileInput", "photoInput", "cameraInput"].forEach((id) => (document.getElementById(id).value = ""));
   document.getElementById("attachmentPreview").classList.add("hidden");

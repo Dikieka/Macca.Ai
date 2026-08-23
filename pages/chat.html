@@ -267,14 +267,24 @@
                 <input type="file" id="photoInput" class="hidden" accept="image/*" />
               </label>
 
-              <label class="flex items-start gap-2.5 px-2.5 py-2 rounded-md text-sm text-ink-900 hover:bg-paper-100 cursor-pointer">
+              <!-- PERBAIKAN ("Ambil foto" tidak membuka kamera perangkat, cuma buka galeri/file
+                   picker biasa): sebelumnya ini <label> yang membungkus <input capture="environment">
+                   — atribut `capture` HANYA sebuah "hint" di spesifikasi HTML, dan banyak browser
+                   (terutama desktop, dan sebagian WebView Android) mengabaikannya lalu menampilkan
+                   file picker/galeri biasa, bukan langsung membuka kamera. Sekarang jadi <button>
+                   yang memicu kamera LANGSUNG lewat getUserMedia (live preview + tombol jepret di
+                   #cameraModal, lihat bindAttachMenu/openCameraCapture_ di chat.js) — cara ini yang
+                   benar-benar "membuka kamera" di browser modern. `cameraInput` (dengan `capture`)
+                   dipertahankan hanya sebagai fallback kalau getUserMedia gagal/tidak didukung. -->
+              <button type="button" id="takePhotoBtn"
+                class="w-full flex items-start gap-2.5 px-2.5 py-2 rounded-md text-sm text-ink-900 hover:bg-paper-100 cursor-pointer text-left">
                 <i data-lucide="camera" class="w-4 h-4 text-ink-500 mt-0.5"></i>
                 <div class="flex flex-col leading-tight">
                   <span>Ambil foto</span>
                   <span class="text-[10px] font-mono font-normal text-ink-500">Gunakan kamera perangkat</span>
                 </div>
-                <input type="file" id="cameraInput" class="hidden" accept="image/*" capture="environment" />
-              </label>
+              </button>
+              <input type="file" id="cameraInput" class="hidden" accept="image/*" capture="environment" />
             </div>
             </div>
             <!-- Pemilihan model manual (#6): default "Otomatis" pakai routeModel() di server,
@@ -308,6 +318,30 @@
       <p class="text-center text-[11px] text-ink-500/70 mt-2 font-mono">Macca bisa saja keliru. Periksa kembali informasi penting.</p>
     </div>
   </main>
+</div>
+
+<!-- Modal "Ambil foto": live preview kamera perangkat (getUserMedia) + tombol jepret,
+     lihat openCameraCapture_() di chat.js. z-[60] supaya di atas #attachMenu (z-50). -->
+<div id="cameraModal" class="hidden fixed inset-0 z-[60] bg-ink-900/90 backdrop-blur-sm flex-col items-center justify-center p-4">
+  <div class="relative w-full max-w-md aspect-[3/4] bg-ink-900 rounded-lg overflow-hidden doc-card">
+    <video id="cameraVideo" class="w-full h-full object-cover" autoplay playsinline muted></video>
+    <p id="cameraError" class="hidden absolute inset-0 p-6 items-center justify-center text-center text-sm text-paper-50 bg-ink-900"></p>
+  </div>
+  <canvas id="cameraCanvas" class="hidden"></canvas>
+  <div class="flex items-center justify-center gap-6 mt-5">
+    <button type="button" id="cameraCloseBtn" title="Tutup"
+      class="w-11 h-11 grid place-items-center rounded-full bg-paper-100/10 text-paper-50 hover:bg-paper-100/20">
+      <i data-lucide="x" class="w-5 h-5"></i>
+    </button>
+    <button type="button" id="cameraShutterBtn" title="Jepret"
+      class="w-16 h-16 grid place-items-center rounded-full bg-paper-50 hover:bg-paper-50/90 ring-4 ring-paper-50/30">
+      <i data-lucide="camera" class="w-6 h-6 text-ink-900"></i>
+    </button>
+    <button type="button" id="cameraSwitchBtn" title="Ganti kamera"
+      class="w-11 h-11 grid place-items-center rounded-full bg-paper-100/10 text-paper-50 hover:bg-paper-100/20">
+      <i data-lucide="refresh-cw" class="w-5 h-5"></i>
+    </button>
+  </div>
 </div>
 
 <script type="module" src="../assets/js/pages/chat.js"></script>
