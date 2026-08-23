@@ -74,7 +74,11 @@ export function requireAdmin() {
  * langsung diarahkan ke dashboard.
  */
 export function redirectIfAuthed(redirectTo = "chat.html") {
-  if (getSession()) {
-    window.location.href = redirectTo;
-  }
+  const session = getSession();
+  if (!session) return;
+  // Sesi valid tapi belum lewat layar intro (mis. akun baru me-refresh/buka ulang
+  // login.html sebelum sempat onboarding) -> tetap arahkan ke intro, bukan chat.html,
+  // supaya onboarding.html tetap satu-satunya jalur "pertama kali" yang konsisten.
+  const target = session.user?.needsOnboarding && redirectTo === "chat.html" ? "onboarding.html" : redirectTo;
+  window.location.href = target;
 }

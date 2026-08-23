@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Kenalan dengan Macca — Macca.Ai</title>
+<meta name="description" content="Ceritakan sedikit soal gaya kerjamu supaya Macca bisa langsung nyambung sejak chat pertama." />
+<meta name="robots" content="noindex, nofollow" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Press+Start+2P&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+<link rel="stylesheet" href="../assets/css/style.css" />
+<link rel="icon" type="image/x-icon" href="../assets/icons/favicon.ico" />
+<link rel="icon" type="image/png" sizes="32x32" href="../assets/icons/favicon-32x32.png" />
+<link rel="icon" type="image/png" sizes="16x16" href="../assets/icons/favicon-16x16.png" />
+<link rel="apple-touch-icon" sizes="180x180" href="../assets/icons/apple-touch-icon.png" />
+<link rel="manifest" href="../assets/icons/site.webmanifest" />
+<script>
+  tailwind.config = { theme: { extend: {
+    colors: { ink:{900:'#EDF0F7',700:'#B7BECF',500:'#7B8298'}, paper:{50:'#0A0C11',100:'#14161F',200:'#20232F'}, amber:{500:'#FFC145',600:'#E0A62E'}, sage:{500:'#3CE6A6',100:'#10261F'}, clay:{500:'#FF5C7A'}, lime:{500:'#C6FF3D',600:'#A6DE22'} },
+    fontFamily: { display:['Space Grotesk','sans-serif'], sans:['Inter','system-ui','sans-serif'], mono:['JetBrains Mono','monospace'], pixel:['"Press Start 2P"','monospace'] }
+  }}}
+</script>
+</head>
+<body class="bg-paper-50 text-[var(--charcoal-900)] min-h-screen">
+
+  <div class="min-h-screen paper-texture scanlines flex flex-col items-center justify-center p-6 relative overflow-hidden">
+    <div class="auth-blob auth-blob-1"></div>
+    <div class="auth-blob auth-blob-2"></div>
+
+    <div class="w-full max-w-lg relative z-10">
+
+      <div class="flex items-center justify-between mb-8">
+        <div class="flex items-center gap-2 font-display text-lg font-semibold text-ink-900">
+          <span class="w-7 h-7 rounded-sm bg-lime-500 text-paper-50 grid place-items-center font-pixel text-[8px]">M</span>
+          Macca.Ai
+        </div>
+        <button id="skipBtn" type="button" class="text-xs font-mono text-ink-500 hover:text-ink-900 transition-colors">Lewati &rarr;</button>
+      </div>
+
+      <!-- Progress -->
+      <div class="flex items-center gap-1.5 mb-8" id="progressDots">
+        <div class="progress-dot"></div>
+        <div class="progress-dot"></div>
+        <div class="progress-dot"></div>
+        <div class="progress-dot"></div>
+      </div>
+
+      <div id="onboardingCard" class="doc-card p-7 sm:p-8">
+
+        <!-- Step 1: Welcome -->
+        <section class="ob-step" data-step="1">
+          <span class="layer-badge text-lime-500">Selamat datang</span>
+          <h1 id="welcomeHeading" class="font-display text-2xl sm:text-3xl font-semibold text-ink-900 mt-3">Halo!</h1>
+          <p class="text-sm text-ink-700 mt-3 leading-relaxed">
+            Sebelum mulai, kenalan bentar yuk — 3 pertanyaan singkat (boleh dilewati) supaya
+            Macca langsung nyambung sama gaya kerjamu sejak chat pertama, bukan nebak-nebak belakangan.
+          </p>
+          <div class="mt-6 flex items-center gap-3 text-xs text-ink-500 font-mono">
+            <i data-lucide="clock" class="w-3.5 h-3.5"></i> Kira-kira 30 detik
+          </div>
+        </section>
+
+        <!-- Step 2: Writing style -->
+        <section class="ob-step hidden" data-step="2">
+          <span class="layer-badge text-sage-500">Gaya penulisan</span>
+          <h2 class="font-display text-xl font-semibold text-ink-900 mt-3">Kalau Macca jawab, maunya gimana?</h2>
+          <p class="text-sm text-ink-700 mt-2">Ini bisa kamu ubah lagi kapan saja di halaman Memory.</p>
+          <div class="flex flex-wrap gap-2 mt-5" id="obWritingStyleChips">
+            <button type="button" class="style-chip" data-value="formal">Formal</button>
+            <button type="button" class="style-chip" data-value="santai">Santai</button>
+            <button type="button" class="style-chip" data-value="akademik">Akademik</button>
+            <button type="button" class="style-chip" data-value="ringkas">Ringkas</button>
+          </div>
+        </section>
+
+        <!-- Step 3: Focus -->
+        <section class="ob-step hidden" data-step="3">
+          <span class="layer-badge text-amber-500">Fokus pemakaian</span>
+          <h2 class="font-display text-xl font-semibold text-ink-900 mt-3">Kamu bakal pakai Macca buat apa?</h2>
+          <p class="text-sm text-ink-700 mt-2">Boleh pilih lebih dari satu.</p>
+          <div class="flex flex-wrap gap-2 mt-5" id="obFocusChips">
+            <button type="button" class="style-chip" data-value="Skripsi / tugas akhir">Skripsi / tugas akhir</button>
+            <button type="button" class="style-chip" data-value="Riset & jurnal">Riset & jurnal</button>
+            <button type="button" class="style-chip" data-value="Kerja & bisnis">Kerja & bisnis</button>
+            <button type="button" class="style-chip" data-value="Belajar sehari-hari">Belajar sehari-hari</button>
+            <button type="button" class="style-chip" data-value="Lainnya">Lainnya</button>
+          </div>
+        </section>
+
+        <!-- Step 4: Goal -->
+        <section class="ob-step hidden" data-step="4">
+          <span class="layer-badge text-clay-500">Opsional</span>
+          <h2 class="font-display text-xl font-semibold text-ink-900 mt-3">Ada target besar yang lagi kamu kejar?</h2>
+          <p class="text-sm text-ink-700 mt-2">Misalnya "lulus semester ini" atau "riset UMKM buat skripsi". Boleh dikosongkan.</p>
+          <textarea id="obGoal" rows="3" maxlength="300"
+            class="mt-5 w-full rounded-md border border-[var(--line)] bg-paper-100 px-3.5 py-2.5 text-sm focus:border-lime-500 focus:ring-1 focus:ring-lime-500 outline-none resize-none"
+            placeholder="Contoh: menyelesaikan skripsi tentang UMKM digital sebelum akhir semester"></textarea>
+        </section>
+
+        <div class="flex items-center justify-between mt-8 pt-6 border-t border-[var(--line)]">
+          <button id="backBtn" type="button" class="text-sm font-medium text-ink-700 hover:text-ink-900 transition-colors invisible">
+            &larr; Kembali
+          </button>
+          <button id="nextBtn" type="button" class="btn-ink rounded-md py-2.5 px-6 text-sm font-semibold">
+            Lanjut
+          </button>
+        </div>
+      </div>
+
+      <p class="text-xs text-ink-500 mt-6 text-center font-mono">Langkah <span id="stepLabel">1</span> dari 4</p>
+    </div>
+  </div>
+
+<style>
+  .progress-dot { height: 4px; flex: 1; border-radius: 999px; background: var(--line); transition: background .25s ease; }
+  .progress-dot.is-done { background: var(--lime-500, #C6FF3D); }
+</style>
+
+<script type="module" src="../assets/js/pages/onboarding.js"></script>
+</body>
+</html>

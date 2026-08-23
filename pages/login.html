@@ -189,12 +189,14 @@
     });
   });
 
-  async function goToChat() {
+  async function goToChat(user) {
     submitBtn?.classList.add("is-success", "btn-success-pop");
     if (submitBtn) submitBtn.innerHTML = '<span class="inline-flex items-center gap-2 justify-center"><i data-lucide="check" class="w-4 h-4"></i> Berhasil, mengalihkan…</span>';
     lucide.createIcons();
     await new Promise((r) => setTimeout(r, 450));
-    window.location.href = "chat.html";
+    // Akun baru (register atau login Google pertama kali) -> layar intro dulu,
+    // baru ke chat.html. User lama langsung ke chat seperti biasa.
+    window.location.href = user?.needsOnboarding ? "onboarding.html" : "chat.html";
   }
 
   form.addEventListener("submit", async (e) => {
@@ -213,7 +215,7 @@
       const data = await callApi("login", { email, password }, { auth: false });
       setSession({ token: data.token, user: data.user });
       overlayText.textContent = `Selamat datang, ${data.user.fullName || "kembali"}! Mengalihkan…`;
-      await goToChat();
+      await goToChat(data.user);
     } catch (err) {
       const msg = err instanceof ApiError ? err.message : "Gagal masuk. Coba lagi.";
       showToast(msg, "error");
@@ -253,7 +255,7 @@
       const data = await callApi("googleLogin", { idToken: response.credential }, { auth: false });
       setSession({ token: data.token, user: data.user });
       overlayText.textContent = `Selamat datang, ${data.user.fullName}! Mengalihkan…`;
-      await goToChat();
+      await goToChat(data.user);
     } catch (err) {
       showToast(err instanceof ApiError ? err.message : "Login Google gagal.", "error");
     } finally {

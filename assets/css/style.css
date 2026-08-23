@@ -188,7 +188,14 @@ body {
 .style-chip.is-active {
   background: var(--lime-500, #C6FF3D);
   border-color: var(--lime-500, #C6FF3D);
-  color: var(--ink-900, #0A0C11);
+  /* PENTING: BUKAN var(--ink-900) — --ink-900 didefinisikan di :root sebagai
+     #EDF0F7 (hampir putih, dipakai buat teks di atas background gelap), jadi
+     fallback #0A0C11 di sini dulu TIDAK PERNAH kepakai (var() cuma jatuh ke
+     fallback kalau variabelnya belum didefinisikan sama sekali, bukan kalau
+     nilainya tidak kontras). Hasilnya teks hampir putih di atas background
+     hijau terang -> nyaris tak terlihat. --paper-50 memang warna gelap
+     (#0A0C11) yang sama, tapi lewat token yang benar-benar dipakai. */
+  color: var(--paper-50);
   font-weight: 600;
 }
 
