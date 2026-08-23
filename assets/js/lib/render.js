@@ -11,6 +11,36 @@ export function escapeHtml(str = "") {
     .replaceAll("'", "&#039;");
 }
 
+/**
+ * Markup teks shimmer ("Macca sedang berpikir…" dkk, lihat .typing-status di
+ * style.css). Dulu efeknya ditulis lewat SATU elemen yang teksnya sendiri
+ * dibikin color:transparent lalu "dimunculkan lagi" via background-clip:text —
+ * begitu clip itu gagal di-render (race re-inject stylesheet Tailwind Play
+ * CDN, atau webview yang dukungannya kurang stabil), teksnya hilang total,
+ * bukan cuma animasinya diam.
+ *
+ * Sekarang dipecah 2 lapis (lihat komentar panjang di .typing-status /
+ * .typing-status::after pada style.css):
+ * - Elemen utama = teks dasar warna solid, SELALU kebaca apa pun yang terjadi.
+ * - `data-text` di elemen yang sama dibaca oleh `::after { content:
+ *   attr(data-text) }` di CSS untuk lapisan overlay sapuan terang. Kalau
+ *   overlay ini gagal render, teks dasarnya tidak pernah ikut hilang.
+ *
+ * Helper ini yang menjamin `data-text` selalu sinkron persis dengan teks yang
+ * ditampilkan (termasuk saat teks status berubah tahap, lihat updateShimmerText).
+ */
+export function shimmerTextHtml(text, extraClass = "") {
+  const safe = escapeHtml(text);
+  return `<span class="typing-status${extraClass ? ` ${extraClass}` : ""}" data-text="${safe}">${safe}</span>`;
+}
+
+/** Ganti teks + data-text sekaligus pada elemen .typing-status, supaya overlay shimmer (::after) tetap sinkron dengan teks dasarnya. */
+export function updateShimmerText(el, text) {
+  if (!el) return;
+  el.textContent = text;
+  el.dataset.text = text;
+}
+
 export function formatRelativeTime(isoString) {
   const diffMs = Date.now() - new Date(isoString).getTime();
   const mins = Math.floor(diffMs / 60000);
@@ -86,6 +116,12 @@ function applyInlineFormatting_(escapedLine) {
     return `\u0000${codeSpans.length - 1}\u0000`;
   });
 
+  // Frasa "berteriak" (huruf besar 3+ kata beruntun) dinormalkan SEBELUM bold/italic/link
+  // diproses, supaya regex-nya cuma menyentuh teks asli (bukan ikut mencocoki tag <a>/
+  // <strong> hasil substitusi berikutnya) — dan sudah lewat placeholder `code` di atas
+  // supaya identifier/konstanta ALL_CAPS di dalam `code` tidak ikut dinormalkan.
+  text = normalizeShouting_(text);
+
   text = text.replace(/\*\*([^\n*]+?)\*\*/g, "<strong>$1</strong>");
   // Italic: *kata* atau _kata_, tidak nyender ke huruf/angka di sebelahnya supaya
   // tidak salah kena kata_dengan_underscore atau sisa ** yang sudah diproses di atas.
@@ -110,6 +146,62 @@ const HEADING_RE = /^\s{0,3}(#{1,6})\s+(.+?)\s*#*\s*$/;
 const HR_RE = /^\s*([-*_])\s*(?:\1\s*){2,}$/;
 const BLOCKQUOTE_RE = /^\s*&gt;\s?(.*)$/; // '>' sudah jadi '&gt;' setelah escapeHtml()
 const CODE_FENCE_RE = /^\s*```\s*([\w+-]*)\s*$/;
+
+/**
+ * Ubah "KATA per KATA" jadi "Kata Per Kata". Dipakai untuk menormalkan baris/frasa
+ * huruf besar semua (lihat isAllCapsHeadingLine_ & normalizeShouting_ di bawah) supaya
+ * hasil akhirnya terlihat rapi/profesional, bukan seperti "berteriak". Hanya menyentuh
+ * huruf yang berada tepat di awal string atau setelah spasi/-// (word boundary), jadi
+ * aman dipakai terhadap teks yang SUDAH di-escapeHtml() — entity seperti "&amp;"/"&lt;"
+ * tidak pernah diawali oleh salah satu boundary char di atas persis di posisi huruf
+ * entity-nya (huruf entity selalu langsung setelah "&", bukan setelah spasi/awal
+ * string), jadi tidak ikut ter-titlecase / rusak.
+ */
+function toTitleCase_(s) {
+  return s.toLowerCase().replace(/(^|[\s\-/])([a-z])/g, (_, sep, ch) => sep + ch.toUpperCase());
+}
+
+/**
+ * Deteksi baris "judul implisit" yang ditulis AI pakai HURUF BESAR SEMUA tanpa
+ * sintaks markdown (mis. "KESIMPULAN", "LANGKAH-LANGKAH PENGERJAAN") supaya bisa
+ * diformat jadi heading yang rapi alih-alih tampil kapital mentah apa adanya.
+ * Sengaja dibuat cukup ketat (baris pendek, tanpa tanda baca akhir kalimat) supaya
+ * TIDAK salah menangkap kalimat huruf besar yang memang panjang/biasa (itu ditangani
+ * terpisah lewat normalizeShouting_ sebagai penekanan di tengah paragraf, bukan
+ * heading baru).
+ */
+function isAllCapsHeadingLine_(line) {
+  const t = line.trim();
+  if (!t || t.length > 60) return false;
+  if (/[a-z]/.test(t)) return false; // ada huruf kecil -> bukan "semua kapital"
+  if (!/[A-Z]/.test(t)) return false; // tidak ada huruf sama sekali (cuma angka/simbol)
+  if (/[.?!]$/.test(t)) return false; // diakhiri tanda baca kalimat -> anggap kalimat biasa, bukan judul
+  const words = t.split(/\s+/).filter(Boolean);
+  if (words.length > 8) return false;
+  // Minimal ada satu "kata" beneran (>=3 huruf) supaya singkatan pendek berdiri
+  // sendiri (mis. "OK", "ID", "PS") tidak ikut dianggap judul bagian.
+  return words.some((w) => w.replace(/[^A-Za-z]/g, "").length >= 3);
+}
+
+/**
+ * Normalisasi frasa "berteriak" (3+ kata beruntun huruf besar semua) DI TENGAH
+ * kalimat/paragraf biasa jadi Title Case + tebal, supaya tidak tampil sebagai
+ * blok kapital yang terkesan kasar/tidak profesional. Sengaja butuh 3+ kata
+ * beruntun (bukan 1-2) supaya singkatan wajar seperti "API", "PDF", "ID", "AI"
+ * yang muncul di tengah kalimat normal TIDAK ikut diubah — istilah teknis
+ * begitu jarang muncul 3 beruntun tanpa kata kecil di antaranya.
+ */
+function normalizeShouting_(text) {
+  return text.replace(/\b([A-Z]{2,}(?:[ -][A-Z]{2,}){2,})\b/g, (m) => {
+    if (/[a-z]/.test(m)) return m; // jaga-jaga: ada huruf kecil berarti bukan all-caps murni
+    // Pakai <strong> biasa (bukan span+class custom) supaya otomatis kebagian styling
+    // bold yang SUDAH ada di kedua jalur render — ".msg-text strong" di style.css untuk
+    // tampilan web, dan tag selector "strong{...}" bawaan Word untuk hasil export .doc —
+    // tanpa perlu nambah aturan CSS terpisah lagi di exportToWord_.
+    return `<strong>${toTitleCase_(m)}</strong>`;
+  });
+}
+
 function splitTableRow_(line) {
   let s = line.trim();
   if (s.startsWith("|")) s = s.slice(1);
@@ -264,6 +356,16 @@ export function renderFormattedText(raw = "") {
       continue;
     }
 
+    // Baris "judul implisit" huruf besar semua tanpa "#" (lihat isAllCapsHeadingLine_)
+    // -> di-Title Case-kan lalu ditampilkan sebagai heading beraksen lime, bukan
+    // dibiarkan tampil kapital mentah.
+    if (isAllCapsHeadingLine_(line)) {
+      flushPara();
+      blocks.push(`<h4 class="msg-h4 msg-auto-heading">${applyInlineFormatting_(toTitleCase_(line.trim()))}</h4>`);
+      i++;
+      continue;
+    }
+
     if (line.trim() === "") {
       flushPara();
       i++;
@@ -396,6 +498,14 @@ export function renderMarkdownToWordHtml(raw = "") {
         i++;
       }
       blocks.push(`<ol style="list-style-type:lower-alpha">${items.join("")}</ol>`);
+      continue;
+    }
+
+    // Sama seperti di renderFormattedText: judul implisit huruf besar semua -> heading.
+    if (isAllCapsHeadingLine_(line)) {
+      flushPara();
+      blocks.push(`<h4>${applyInlineFormatting_(toTitleCase_(line.trim()))}</h4>`);
+      i++;
       continue;
     }
 

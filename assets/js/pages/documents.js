@@ -1,7 +1,7 @@
 // assets/js/pages/documents.js
 import { requireAuth } from "../lib/auth.js";
 import { callApi, ApiError } from "../lib/api.js";
-import { showToast } from "../lib/state.js";
+import { showToast, confirmDialog } from "../lib/state.js";
 import { escapeHtml, formatRelativeTime, markActiveSidebarLink, applyRoleBasedNav } from "../lib/render.js";
 import { prepareFileForUpload } from "../lib/upload.js";
 import { initSidebarResize, initSidebarMobile, loadSidebarHistory } from "../lib/sidebar.js";
@@ -78,7 +78,7 @@ function bindDeleteButtons() {
   document.querySelectorAll("[data-delete-doc]").forEach((btn) => {
     btn.addEventListener("click", async () => {
       const documentId = btn.dataset.deleteDoc;
-      if (!confirm("Hapus dokumen ini? File akan dihapus permanen dari penyimpanan.")) return;
+      if (!(await confirmDialog("File akan dihapus permanen dari penyimpanan.", { title: "Hapus dokumen ini?", confirmText: "Hapus", danger: true }))) return;
       const row = document.querySelector(`[data-doc-row="${CSS.escape(documentId)}"]`);
       if (row) row.classList.add("opacity-50", "pointer-events-none");
       try {

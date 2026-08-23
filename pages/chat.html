@@ -261,11 +261,20 @@
               </div>
             </div>
             <!-- Pemilihan model manual (#6): default "Otomatis" pakai routeModel() di server,
-                 tapi user bisa memilih model tertentu kalau model default sedang bermasalah. -->
-            <select id="modelPicker" title="Pilih model AI"
-              class="text-xs bg-paper-100 border border-[var(--line)] rounded-md px-2 py-1.5 text-ink-700 outline-none focus:border-lime-500 max-w-[9.5rem] truncate">
-              <option value="">Otomatis (disarankan)</option>
-            </select>
+                 tapi user bisa memilih model tertentu kalau model default sedang bermasalah.
+                 PERBAIKAN (desain dropdown native browser terlihat "plain"/tidak konsisten
+                 dengan tema gelap Macca): diganti jadi tombol + menu custom (portal ke <body>,
+                 position:fixed), sama persis pola yang sudah dipakai #attachMenu di atas,
+                 supaya konsisten dengan doc-card/lime-500/dashed-border di seluruh app. -->
+            <div class="relative">
+              <button type="button" id="modelPickerBtn" title="Pilih model AI"
+                class="flex items-center gap-1.5 text-xs bg-paper-100 border border-[var(--line)] rounded-md px-2.5 py-1.5 text-ink-700 outline-none hover:border-lime-500/60 focus:border-lime-500 transition-colors max-w-[10.5rem]">
+                <i data-lucide="cpu" class="w-3.5 h-3.5 text-ink-500 shrink-0"></i>
+                <span id="modelPickerLabel" class="truncate">Otomatis (disarankan)</span>
+                <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-ink-500 shrink-0 ml-auto"></i>
+              </button>
+              <div id="modelMenu" class="hidden fixed w-64 doc-card p-1.5 shadow-xl z-50 max-h-72 overflow-y-auto thin-scroll"></div>
+            </div>
           </div>
           <button type="submit" id="sendBtn" class="btn-amber rounded-md px-4 py-2 text-sm font-semibold flex items-center gap-2">
             Kirim <i data-lucide="arrow-up" class="w-4 h-4"></i>

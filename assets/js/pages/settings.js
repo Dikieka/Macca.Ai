@@ -1,7 +1,7 @@
 // assets/js/pages/settings.js
 import { requireAuth, logout, setSession, getSession } from "../lib/auth.js";
 import { callApi, ApiError } from "../lib/api.js";
-import { showToast, setLoading } from "../lib/state.js";
+import { showToast, setLoading, confirmDialog } from "../lib/state.js";
 import { markActiveSidebarLink, applyRoleBasedNav } from "../lib/render.js";
 import { initSidebarResize, initSidebarMobile, loadSidebarHistory } from "../lib/sidebar.js";
 
@@ -50,7 +50,7 @@ function bindForm() {
 }
 
 function bindLogout() {
-  document.getElementById("logoutBtn").addEventListener("click", () => {
-    if (confirm("Keluar dari Macca.Ai?")) logout("login.html");
+  document.getElementById("logoutBtn").addEventListener("click", async () => {
+    if (await confirmDialog("Keluar dari Macca.Ai?", { title: "Keluar", confirmText: "Keluar" })) logout("login.html");
   });
 }

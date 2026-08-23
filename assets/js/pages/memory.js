@@ -1,7 +1,7 @@
 // assets/js/pages/memory.js
 import { requireAuth } from "../lib/auth.js";
 import { callApi, ApiError } from "../lib/api.js";
-import { showToast, setLoading } from "../lib/state.js";
+import { showToast, setLoading, confirmDialog } from "../lib/state.js";
 import { escapeHtml, formatRelativeTime, markActiveSidebarLink, applyRoleBasedNav } from "../lib/render.js";
 import { initSidebarResize, initSidebarMobile, loadSidebarHistory } from "../lib/sidebar.js";
 
@@ -109,7 +109,7 @@ async function loadMemories() {
 function bindDeleteButtons() {
   document.querySelectorAll(".delete-memory").forEach((btn) => {
     btn.addEventListener("click", async () => {
-      if (!confirm("Hapus memory ini?")) return;
+      if (!(await confirmDialog("Hapus memory ini?", { title: "Hapus memory", confirmText: "Hapus", danger: true }))) return;
       try {
         await callApi("deleteMemory", { id: btn.dataset.id });
         showToast("Memory dihapus.", "success");

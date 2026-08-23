@@ -213,7 +213,6 @@
       const data = await callApi("login", { email, password }, { auth: false });
       setSession({ token: data.token, user: data.user });
       overlayText.textContent = `Selamat datang, ${data.user.fullName || "kembali"}! Mengalihkan…`;
-      showToast(`Selamat datang, ${data.user.fullName || "kembali"}!`, "success");
       await goToChat();
     } catch (err) {
       const msg = err instanceof ApiError ? err.message : "Gagal masuk. Coba lagi.";
@@ -254,7 +253,6 @@
       const data = await callApi("googleLogin", { idToken: response.credential }, { auth: false });
       setSession({ token: data.token, user: data.user });
       overlayText.textContent = `Selamat datang, ${data.user.fullName}! Mengalihkan…`;
-      showToast(`Selamat datang, ${data.user.fullName}!`, "success");
       await goToChat();
     } catch (err) {
       showToast(err instanceof ApiError ? err.message : "Login Google gagal.", "error");

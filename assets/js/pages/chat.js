@@ -3,8 +3,8 @@
 // tanpa ?chatId, tampil sapaan + quick actions + proyek terbaru (lihat #emptyState di chat.html).
 import { requireAuth, logout } from "../lib/auth.js";
 import { callApi, ApiError } from "../lib/api.js";
-import { showToast, setLoading } from "../lib/state.js";
-import { escapeHtml, formatRelativeTime, markActiveSidebarLink, applyRoleBasedNav, fileIconFor, renderFormattedText, renderMarkdownToWordHtml } from "../lib/render.js";
+import { showToast, setLoading, confirmDialog } from "../lib/state.js";
+import { escapeHtml, formatRelativeTime, markActiveSidebarLink, applyRoleBasedNav, fileIconFor, renderFormattedText, renderMarkdownToWordHtml, shimmerTextHtml, updateShimmerText } from "../lib/render.js";
 import { prepareFileForUpload, formatBytes } from "../lib/upload.js";
 import { initSidebarResize, initSidebarMobile } from "../lib/sidebar.js";
 import { getCachedChatHistory, setCachedChatHistory } from "../lib/historyCache.js";
@@ -163,37 +163,95 @@ function bindLogout() {
   });
 }
 
+/**
+ * PERBAIKAN (dropdown model pakai <select> native browser -> terlihat "plain", tidak
+ * konsisten dengan tema gelap/desain custom Macca lainnya): diganti jadi tombol + menu
+ * custom yang di-portal ke <body> dengan position:fixed, PERSIS pola yang sudah dipakai
+ * bindAttachMenu() di atas (termasuk alasan kenapa portal diperlukan — clip-path pada
+ * ancestor doc-card memotong dropdown absolute biasa). Behavior/route tetap sama: value
+ * kosong = "Otomatis" (server routeModel()), selain itu slug model dikirim sebagai
+ * preferredModel, tersimpan di localStorage("macca_preferred_model") sama seperti sebelumnya.
+ */
 function bindModelPicker() {
-  const select = document.getElementById("modelPicker");
-  if (!select) return;
+  const btn = document.getElementById("modelPickerBtn");
+  const label = document.getElementById("modelPickerLabel");
+  const menu = document.getElementById("modelMenu");
+  if (!btn || !menu) return;
 
-  // PERBAIKAN cache: daftar model jarang berubah (cuma kalau admin ubah lewat
-  // panel admin), tapi sebelumnya di-fetch ulang dari Apps Script SETIAP kali
-  // chat.html dibuka. Sekarang tampilkan cache dulu (instan, dropdown langsung
-  // terisi), lalu tetap fetch listModels seperti biasa di background supaya
-  // kalau admin baru saja ubah model, halaman tetap dapat data terbaru.
+  document.body.appendChild(menu); // portal, lihat komentar bindAttachMenu() untuk alasan clip-path
+
+  const positionMenu = () => {
+    const rect = btn.getBoundingClientRect();
+    const menuHeight = menu.offsetHeight || 220;
+    // Buka ke atas kalau tempat di bawah tombol tidak cukup (composer ada di bagian
+    // bawah layar), sama seperti pola attachMenu.
+    const openUp = rect.bottom + menuHeight + 8 > window.innerHeight;
+    menu.style.left = Math.max(8, rect.left) + "px";
+    menu.style.top = openUp ? (rect.top - menuHeight - 8) + "px" : (rect.bottom + 8) + "px";
+  };
+
+  const closeMenu = () => menu.classList.add("hidden");
+  const toggleMenu = () => {
+    const willOpen = menu.classList.contains("hidden");
+    if (willOpen) positionMenu();
+    menu.classList.toggle("hidden");
+    if (willOpen) positionMenu();
+  };
+
+  btn.addEventListener("click", (e) => { e.stopPropagation(); toggleMenu(); });
+  document.addEventListener("click", (e) => {
+    if (!menu.contains(e.target) && e.target !== btn && !btn.contains(e.target)) closeMenu();
+  });
+  window.addEventListener("resize", () => { if (!menu.classList.contains("hidden")) positionMenu(); });
+  document.getElementById("messageList")?.addEventListener("scroll", closeMenu);
+
   const cachedModels = getCached("models");
-  if (cachedModels) renderModelOptions_(select, cachedModels);
+  if (cachedModels) renderModelOptions_(menu, label, cachedModels);
 
   callApi("listModels", {})
     .then((models) => {
       setCached("models", models);
-      renderModelOptions_(select, models);
+      renderModelOptions_(menu, label, models);
     })
     .catch(() => {
-      if (!cachedModels) select.innerHTML = `<option value="">Otomatis (disarankan)</option>`;
+      if (!cachedModels) renderModelOptions_(menu, label, []);
     });
-
-  select.addEventListener("change", () => {
-    selectedModel = select.value;
-    localStorage.setItem("macca_preferred_model", selectedModel);
-  });
 }
 
-function renderModelOptions_(select, models) {
-  select.innerHTML = `<option value="">Otomatis (disarankan)</option>` +
-    models.map((m) => `<option value="${escapeHtml(m.modelSlug)}">${escapeHtml(m.modelSlug)}${m.free ? " · gratis" : ""}</option>`).join("");
-  select.value = selectedModel;
+function renderModelOptions_(menu, label, models) {
+  const options = [{ modelSlug: "", free: false, isAuto: true }, ...models];
+
+  menu.innerHTML = options.map((m) => {
+    const value = m.isAuto ? "" : m.modelSlug;
+    const isActive = selectedModel === value;
+    const text = m.isAuto ? "Otomatis (disarankan)" : escapeHtml(m.modelSlug);
+    return `
+      <button type="button" data-model-value="${escapeHtml(value)}"
+        class="model-option w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md text-sm text-left transition-colors
+          ${isActive ? "bg-lime-500/10 text-lime-500" : "text-ink-900 hover:bg-paper-100"}">
+        ${m.isAuto ? `<i data-lucide="sparkles" class="w-3.5 h-3.5 shrink-0 ${isActive ? "text-lime-500" : "text-ink-500"}"></i>`
+                    : `<i data-lucide="cpu" class="w-3.5 h-3.5 shrink-0 ${isActive ? "text-lime-500" : "text-ink-500"}"></i>`}
+        <span class="truncate flex-1">${text}</span>
+        ${!m.isAuto && m.free ? `<span class="text-[10px] font-mono text-ink-500 shrink-0">gratis</span>` : ""}
+        ${isActive ? `<i data-lucide="check" class="w-3.5 h-3.5 text-lime-500 shrink-0"></i>` : ""}
+      </button>`;
+  }).join("");
+
+  menu.querySelectorAll(".model-option").forEach((optBtn) => {
+    optBtn.addEventListener("click", () => {
+      selectedModel = optBtn.dataset.modelValue;
+      localStorage.setItem("macca_preferred_model", selectedModel);
+      renderModelOptions_(menu, label, models); // re-render supaya checkmark/highlight pindah
+      menu.classList.add("hidden");
+    });
+  });
+
+  const activeModel = options.find((m) => (m.isAuto ? "" : m.modelSlug) === selectedModel);
+  label.textContent = activeModel
+    ? (activeModel.isAuto ? "Otomatis (disarankan)" : activeModel.modelSlug)
+    : "Otomatis (disarankan)"; // fallback kalau model tersimpan sudah tidak ada di registry lagi
+
+  if (window.lucide) lucide.createIcons();
 }
 
 function bindQuickActions() {
@@ -304,7 +362,7 @@ function renderChatList() {
       e.preventDefault();
       e.stopPropagation();
       const chatId = btn.dataset.deleteChat;
-      if (!confirm("Hapus percakapan ini? Tindakan ini tidak bisa dibatalkan.")) return;
+      if (!(await confirmDialog("Apakah Anda yakin ingin menghapus obrolan ini?", { title: "Hapus obrolan", confirmText: "Hapus", danger: true }))) return;
       try {
         await callApi("deleteChat", { chatId });
         chatListCache = chatListCache.filter((c) => c.id !== chatId);
@@ -1570,6 +1628,32 @@ async function regenerateMessage(wrapper) {
   icon?.classList.add("animate-spin");
   const gen = beginGeneration();
 
+  // PERBAIKAN: sebelumnya saat "Buat ulang" ditekan, bubble jawaban lama tetap tampil
+  // apa adanya sampai balasan baru datang — satu-satunya tanda proses berjalan cuma ikon
+  // tombol yang berputar, jadi di area chat sendiri tidak terlihat ada proses berjalan
+  // (apalagi kalau balasannya panjang/lama). Sekarang isi bubble diganti sementara dengan
+  // indikator loading persis sama (markup & style-nya) dengan kartu "Macca sedang
+  // berpikir…" yang dipakai appendTypingIndicator saat kirim pesan baru — supaya kedua
+  // alur "sedang generate" ini konsisten tampilannya di seluruh aplikasi. Kalau
+  // gagal/dibatalkan, isi lama dikembalikan (lihat blok catch) supaya jawaban
+  // sebelumnya tidak hilang begitu saja.
+  const replyShell = wrapper.querySelector(".reply-shell");
+  const originalShellHtml = replyShell ? replyShell.innerHTML : null;
+  if (replyShell) {
+    // Kotak border (doc-card) cuma bungkus titik-titiknya saja — teks status
+    // sengaja ditaruh di LUAR kotak itu, sebagai sibling di sampingnya, bukan
+    // di dalam border/padding-nya (lihat catatan appendTypingIndicator di bawah).
+    replyShell.innerHTML = `
+      <div class="flex items-center gap-2.5 w-fit">
+        <div class="doc-card px-3 py-3 flex items-center gap-1.5 w-fit">
+          <span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span>
+        </div>
+        ${shimmerTextHtml("Membuat ulang jawaban…", "text-xs font-mono")}
+      </div>`;
+    lucide.createIcons();
+  }
+  scrollToBottom();
+
   try {
     const result = await callApi("regenerateReply", {
       chatId: currentChatId,
@@ -1577,7 +1661,7 @@ async function regenerateMessage(wrapper) {
       preferredModel: selectedModel || undefined,
     }, { signal: gen.controller.signal });
     removeMessagesAfter(wrapper); // pesan setelah balasan ini (biasanya tidak ada, karena selalu yang terakhir)
-    wrapper.remove(); // ganti bubble lama dengan yang baru
+    wrapper.remove(); // ganti bubble lama (+ indikator loading di atas) dengan yang baru
     await typeOutReply(result.reply.content, result.reply.model, result.reply.id, gen, result.reply.usedAcademicSources, result.reply.truncated);
     loadChatList();
   } catch (err) {
@@ -1585,6 +1669,12 @@ async function regenerateMessage(wrapper) {
       showToast("Dihentikan.", "info");
     } else {
       showToast(err instanceof ApiError ? err.message : "Gagal membuat ulang jawaban.", "error");
+    }
+    // Gagal/dibatalkan -> kembalikan bubble ke isi jawaban lama, jangan biarkan
+    // indikator loading nyangkut atau jawaban sebelumnya hilang.
+    if (replyShell && originalShellHtml !== null) {
+      replyShell.innerHTML = originalShellHtml;
+      lucide.createIcons();
     }
     regenBtn?.removeAttribute("disabled");
     icon?.classList.remove("animate-spin");
@@ -1596,35 +1686,91 @@ async function regenerateMessage(wrapper) {
 /**
  * Indikator "Macca sedang memproses" (perbaikan #2) — sebelumnya cuma tiga titik
  * animasi tanpa keterangan, jadi pada request yang lama (dokumen panjang / model
- * penuh) user tidak tahu apakah aplikasi masih bekerja atau macet. Sekarang ada
- * label teks yang berubah bertahap kalau prosesnya makin lama, supaya user tetap
- * yakin ini masih berjalan, bukan diam mendadak. Timer-nya di-clear oleh pemanggil
- * (removeTypingIndicator) begitu balasan datang atau dibatalkan.
+ * penuh) user tidak tahu apakah aplikasi masih bekerja atau macet. Lalu ditambah
+ * label teks yang berubah bertahap kalau prosesnya makin lama.
+ *
+ * PERBAIKAN LANJUTAN: label teks itu SELALU sama persis tiap kali (skrip 4 tahap
+ * yang tetap), jadi kesannya kaku/itu-itu saja. Sekarang ditambah ikon yang ikut
+ * berganti, dan di 10 detik pertama (fase "belum jelas prosesnya seberapa lama")
+ * label + ikonnya BERGILIR lewat kumpulan variasi acak (lihat THINKING_PHRASES_),
+ * urutannya diacak ulang tiap kali indikator ini muncul supaya tidak terasa
+ * berulang secara pola — mirip indikator "sedang berpikir" ala Claude. Begitu
+ * proses ternyata makin lama (>=10 detik), pesan beralih ke info progres yang
+ * lebih akurat & tetap (bukan random lagi), supaya user tahu ini memang masih
+ * berjalan normal, bukan macet.
  */
+const THINKING_PHRASES_ = [
+  { icon: "brain-circuit", text: "Macca sedang berpikir…" },
+  { icon: "search", text: "Menganalisis pertanyaan…" },
+  { icon: "list-checks", text: "Menyusun kerangka jawaban…" },
+  { icon: "pen-line", text: "Merangkai kalimat…" },
+  { icon: "file-text", text: "Menulis draf jawaban…" },
+  { icon: "sparkles", text: "Menyempurnakan detail…" },
+];
+
+/** Fisher-Yates shuffle sederhana, supaya urutan variasi kalimat tidak selalu sama tiap kali indikator muncul. */
+function shuffle_(arr) {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
 function appendTypingIndicator() {
   const container = document.getElementById("messages");
   const el = document.createElement("div");
   el.className = "flex justify-start";
-  el.innerHTML = `<div class="doc-card px-4 py-3 flex items-center gap-2.5">
-      <span class="flex gap-1.5 items-center">
+  // PERBAIKAN: sebelumnya titik-titik DAN teks status sama-sama ditaruh di
+  // dalam satu kotak doc-card (border + clip-path notch). Sekarang kotak
+  // border itu cuma membungkus titik-titiknya saja (efek "kursor terminal"),
+  // sedangkan ikon + teks shimmer-nya jadi sibling di LUAR kotak — di
+  // sampingnya, bukan di dalam border/padding — sesuai permintaan.
+  el.innerHTML = `<div class="flex items-center gap-2.5">
+      <div class="doc-card px-3 py-3 flex items-center gap-1.5 w-fit">
         <span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span>
+      </div>
+      <span class="flex items-center gap-1.5" data-typing-icon-wrap>
+        <i data-lucide="brain-circuit" class="w-3.5 h-3.5 text-ink-500"></i>
       </span>
-      <span class="typing-status text-xs font-mono">Macca sedang berpikir…</span>
+      ${shimmerTextHtml("Macca sedang berpikir…", "text-xs font-mono")}
     </div>`;
   container.appendChild(el);
+  if (window.lucide) lucide.createIcons();
   scrollToBottom();
 
   const statusEl = el.querySelector(".typing-status");
-  const stages = [
-    { after: 0, text: "Macca sedang berpikir…" },
-    { after: 4000, text: "Masih memproses, mohon tunggu sebentar…" },
-    { after: 10000, text: "Menyusun jawaban yang cukup panjang, hampir selesai…" },
-    { after: 20000, text: "Masih berjalan — dokumen/permintaan ini butuh waktu lebih lama dari biasanya…" },
+  const iconWrap = el.querySelector("[data-typing-icon-wrap]");
+  const setPhrase = (icon, text) => {
+    if (!statusEl.isConnected) return;
+    updateShimmerText(statusEl, text); // update textContent + data-text sekaligus, biar overlay shimmer (::after) tetap sinkron
+    if (iconWrap) {
+      iconWrap.innerHTML = `<i data-lucide="${icon}" class="w-3.5 h-3.5 text-ink-500"></i>`;
+      if (window.lucide) lucide.createIcons();
+    }
+  };
+
+  // Fase awal (0-10 detik pertama): bergilir lewat variasi acak tiap ~2.2 detik,
+  // biar terasa "hidup"/dinamis selagi user belum tahu jawabannya bakal cepat atau lama.
+  const shuffled = shuffle_(THINKING_PHRASES_);
+  let cycleIdx = 0;
+  const cycleInterval = setInterval(() => {
+    cycleIdx = (cycleIdx + 1) % shuffled.length;
+    setPhrase(shuffled[cycleIdx].icon, shuffled[cycleIdx].text);
+  }, 2200);
+
+  // Fase lanjutan (proses ternyata makin lama): pesan progres yang lebih akurat &
+  // tetap (bukan acak lagi), supaya user tahu ini memang masih berjalan wajar.
+  const laterStages = [
+    { after: 10000, icon: "loader-circle", text: "Menyusun jawaban yang cukup panjang, hampir selesai…" },
+    { after: 20000, icon: "hourglass", text: "Masih berjalan — dokumen/permintaan ini butuh waktu lebih lama dari biasanya…" },
   ];
-  const timers = stages.slice(1).map((s) => setTimeout(() => {
-    if (statusEl.isConnected) statusEl.textContent = s.text;
+  const timers = laterStages.map((s) => setTimeout(() => {
+    clearInterval(cycleInterval); // hentikan gilir-acak begitu masuk fase progres akurat
+    setPhrase(s.icon, s.text);
   }, s.after));
-  el._typingTimers = timers; // dibersihkan di removeTypingIndicator() supaya tidak nyala setelah bubble dihapus
+  el._typingTimers = [...timers, cycleInterval]; // dibersihkan di removeTypingIndicator() supaya tidak nyala setelah bubble dihapus
 
   return el;
 }
@@ -1639,20 +1785,40 @@ function removeTypingIndicator(el) {
  * Simulasi streaming: Apps Script mengembalikan jawaban utuh (tidak ada
  * SSE asli), jadi kita render bertahap per beberapa karakter agar terasa
  * seperti mengetik (lihat known_limitations.no_true_streaming).
+ *
+ * PERBAIKAN: sebelumnya, SELAMA proses "mengetik" teksnya ditulis polos lewat
+ * `textContent +=` (supaya animasinya mulus) dan baru diformat (bold/heading/
+ * list/tabel) SETELAH selesai lewat renderFormattedText — akibatnya selama
+ * animasi berjalan, sintaks markdown mentah (**, ##, dst.) ikut kelihatan apa
+ * adanya di layar, baru "rapi" begitu AI selesai menulis (lihat screenshot
+ * user: "**BAB II**", "### **2.1 ...**" dst. masih tampil mentah). Sekarang
+ * teks yang SUDAH terungkap di-parse ulang lewat renderFormattedText() di
+ * SETIAP langkah, jadi heading/list/bold/tabel langsung "terbentuk" begitu
+ * strukturnya lengkap — persis seperti markdown streaming di ChatGPT/Claude —
+ * bukan menunggu sampai seluruh jawaban selesai. Sintaks yang belum lengkap
+ * (mis. "**Bold" yang tanda ** penutupnya belum "diketik") otomatis tetap
+ * tampil apa adanya sampai penutupnya muncul, karena regex-nya memang baru
+ * cocok kalau sudah lengkap — jadi tidak akan salah format di tengah jalan.
+ * Kursor kedap-kedip (.blink-cursor, sudah ada di style.css untuk elemen
+ * hero) ditempel di ujung teks yang sedang berjalan supaya kesan "sedang
+ * menulis" tetap terasa walau formatnya sudah rapi dari awal.
  */
 async function typeOutReply(fullText, model, messageId, gen, academicSources, truncated) {
   const wrapper = appendMessage("assistant", "", false, null, messageId);
   const textEl = wrapper.querySelector(".reply-text");
   const chunkSize = 3;
+  let revealed = "";
+  const CURSOR_HTML = `<span class="blink-cursor" aria-hidden="true"></span>`;
   for (let i = 0; i < fullText.length; i += chunkSize) {
     if (gen?.stopTypingRequested) break; // #5: Stop ditekan -> potong animasi, tampilkan sisanya langsung
-    textEl.textContent += fullText.slice(i, i + chunkSize);
+    revealed += fullText.slice(i, i + chunkSize);
+    textEl.innerHTML = renderFormattedText(revealed) + CURSOR_HTML;
     scrollToBottom();
     await sleep(12);
   }
-  // Selama animasi teks di atas ditulis polos (textContent) supaya efek "mengetik"
-  // per-karakter tetap mulus. Begitu selesai (normal atau di-stop), ganti ke versi
-  // terformat (bold/list) — lihat renderFormattedText di render.js.
+  // Rapikan hasil akhir dengan teks LENGKAP (bukan cuma revealed) — kalau Stop
+  // ditekan di tengah, sisa jawaban tetap langsung tampil utuh & terformat,
+  // bukan terpotong menggantung.
   textEl.innerHTML = renderFormattedText(fullText);
   textEl.dataset.raw = fullText; // dipakai tombol Salin & Unduh (#3/#4)
   if (model) {
@@ -1701,7 +1867,7 @@ async function continueTruncatedReply(wrapper, btn) {
   if (!messageId || !textEl) return;
 
   const bar = btn.closest(".continue-reply-bar");
-  bar.innerHTML = `<span class="typing-status text-xs font-mono">Melanjutkan jawaban…</span>`;
+  bar.innerHTML = shimmerTextHtml("Melanjutkan jawaban…", "text-xs font-mono");
 
   const gen = beginGeneration();
   try {
@@ -1761,7 +1927,7 @@ function bindHeaderActions() {
 
   document.getElementById("deleteBtn").addEventListener("click", async () => {
     if (!currentChatId) return showToast("Belum ada chat untuk dihapus.", "info");
-    if (!confirm("Hapus percakapan ini? Tindakan ini tidak bisa dibatalkan.")) return;
+    if (!(await confirmDialog("Apakah Anda yakin ingin menghapus obrolan ini?", { title: "Hapus obrolan", confirmText: "Hapus", danger: true }))) return;
     try {
       await callApi("deleteChat", { chatId: currentChatId });
       chatListCache = chatListCache.filter((c) => c.id !== currentChatId);

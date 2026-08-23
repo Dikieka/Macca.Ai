@@ -1,7 +1,7 @@
 // assets/js/pages/admin.js
 import { requireAdmin } from "../lib/auth.js";
 import { callApi, ApiError } from "../lib/api.js";
-import { showToast, setLoading } from "../lib/state.js";
+import { showToast, setLoading, confirmDialog } from "../lib/state.js";
 import { escapeHtml, applyRoleBasedNav } from "../lib/render.js";
 import { initSidebarResize, initSidebarMobile, loadSidebarHistory } from "../lib/sidebar.js";
 
@@ -109,7 +109,7 @@ function bindUserActions() {
   document.querySelectorAll("[data-status-toggle]").forEach((btn) => {
     btn.addEventListener("click", async () => {
       const next = btn.dataset.status === "suspended" ? "active" : "suspended";
-      if (next === "suspended" && !confirm("Suspend user ini? Semua sesi login aktifnya akan dihentikan.")) return;
+      if (next === "suspended" && !(await confirmDialog("Semua sesi login aktifnya akan dihentikan.", { title: "Suspend user ini?", confirmText: "Suspend", danger: true }))) return;
       try {
         await callApi("adminUpdateUserStatus", { userId: btn.dataset.id, status: next });
         showToast(next === "suspended" ? "User disuspend." : "User diaktifkan kembali.", "success");
@@ -164,7 +164,7 @@ function bindModelActions() {
 
   document.querySelectorAll("[data-delete-model]").forEach((btn) => {
     btn.addEventListener("click", async () => {
-      if (!confirm("Hapus model ini dari daftar? User tidak akan bisa memilihnya lagi.")) return;
+      if (!(await confirmDialog("User tidak akan bisa memilihnya lagi.", { title: "Hapus model ini dari daftar?", confirmText: "Hapus", danger: true }))) return;
       try {
         await callApi("adminDeleteModel", { id: btn.dataset.id });
         showToast("Model dihapus.", "success");

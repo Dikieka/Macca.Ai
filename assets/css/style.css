@@ -133,6 +133,17 @@ body {
   .doc-card:hover { transform: none; }
 }
 
+/* PERBAIKAN (composer chat "naik-turun" saat hover): .doc-card:hover di atas sengaja
+   dipakai luas (landing page, dsb) supaya kartu terasa interaktif — translateY + bayangan
+   membesar. Untuk form composer efek "terangkat" itu terasa mengganggu (composer sering
+   di-hover berulang saat mengetik), jadi transform & box-shadow-nya dinetralkan khusus di
+   sini, TANPA menghapus animasi warna border lime dari .doc-card:hover (border-color tidak
+   di-override, jadi tetap jalan seperti biasa).*/
+#composerForm.doc-card:hover {
+  transform: none;
+  box-shadow: 0 14px 28px -20px rgba(0,0,0,0.6);
+}
+
 .btn-ink {
   background: var(--ink-900);
   color: var(--paper-50);
@@ -187,6 +198,22 @@ body {
    dipasang lewat JS: authOverlay.classList.remove("hidden") saat submit, ditutup lagi
    di finally block (baik sukses maupun gagal). */
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+/* Modal konfirmasi custom (lihat confirmDialog() di state.js) — pengganti window.confirm() */
+.confirm-backdrop {
+  animation: fadeIn .15s ease;
+}
+.confirm-panel {
+  animation: confirm-panel-in .18s cubic-bezier(.2,.8,.2,1);
+}
+@keyframes confirm-panel-in {
+  from { opacity: 0; transform: scale(.96) translateY(4px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+.confirm-backdrop.confirm-leaving { opacity: 0; transition: opacity .12s ease; }
+@media (prefers-reduced-motion: reduce) {
+  .confirm-backdrop, .confirm-panel { animation: none; }
+}
 .auth-loading-overlay {
   position: fixed; inset: 0; z-index: 200;
   display: grid; place-items: center;
@@ -303,61 +330,75 @@ body {
 
 /* ==========================================================================
    Shimmer text — label status "Macca sedang berpikir…" (ala Claude).
-   Teks dasarnya pudar (ink-500), lalu ada gradient terang yang nyapu dari
-   kiri ke kanan berulang-ulang lewat background-clip:text, jadi kesannya
-   "menyala" bergerak, bukan cuma statis pudar atau blink on/off biasa.
-   background-size 250% dipilih supaya "sapuan terang"-nya cukup sempit
-   dibanding lebar teks (kelihatan seperti sorotan lewat), bukan menerangi
-   seluruh teks sekaligus.
 
-   PERBAIKAN (animasi tidak kelihatan sama sekali — teks tampil putih polos,
-   diam, seperti tidak ada style ini yang jalan): app ini pakai Tailwind lewat
-   Play CDN (cdn.tailwindcss.com, lihat <head> tiap halaman), yang men-scan
-   ulang DOM lewat MutationObserver dan MENYISIPKAN ULANG stylesheet hasil
-   generate-nya setiap kali ada elemen baru muncul — PERSIS yang terjadi
-   setiap kali bubble ini dibuat lewat JS (appendTypingIndicator). Stylesheet
-   Tailwind yang disisipkan ulang itu bisa mendarat SETELAH style.css di
-   <head>, jadi rule netral (mis. dari base/preflight-nya) menang lewat
-   urutan dokumen walau specificity-nya sama, dan color:transparent di sini
-   "kalah" -> teks balik ke warna default (putih/ink-900) yang tidak
-   transparan, background-clip:text jadi tidak kelihatan efeknya sama sekali,
-   dan hasilnya kelihatan seperti animasinya "tidak jalan". `!important` di
-   properti terkait warna/clip di bawah memaksa rule ini SELALU menang
-   terlepas dari urutan penyisipan ulang stylesheet Tailwind tsb. -->
+   PERBAIKAN #2 (teks hilang total, bukan cuma animasinya diam): versi lama
+   menaruh SEMUA efek di satu elemen yang sama — teksnya sendiri diberi
+   `color:transparent` lalu "dimunculkan lagi" lewat `background-clip:text`.
+   Konsekuensinya, teks itu HANYA kelihatan kalau `background-clip:text`
+   berhasil di-render. Begitu gagal (race re-inject stylesheet Tailwind Play
+   CDN, atau webview/browser yang dukungannya kurang stabil untuk properti
+   ini), yang tersisa cuma `color:transparent` TANPA clip yang jalan — teks
+   jadi benar-benar tidak kelihatan sama sekali, bukan cuma "tidak berkilau".//
+   `!important` di versi lama memang bikin RULE-nya menang, tapi tidak bisa
+   memaksa FITUR background-clip:text itu sendiri untuk berhasil di-render.
+
+   SOLUSI: pisah jadi 2 lapis independen supaya teks tidak pernah bisa hilang:
+   1) `.typing-status` sendiri = teks dasar biasa, warna solid abu-abu
+      (--ink-500), TIDAK transparan, TIDAK bergantung pada background-clip.
+      Ini yang menjamin teks selalu kebaca apa pun yang terjadi.
+   2) `.typing-status::after` = lapisan overlay terpisah persis di atasnya
+      (posisinya absolute, isinya disalin dari atribut data-text lewat
+      `content: attr(data-text)`), yang baru pakai trik gradient + 
+      background-clip:text untuk efek sapuan terang bergerak. Kalau lapisan
+      ini gagal di-render di browser tertentu, teks dasar di bawahnya (poin 1)
+      tetap utuh terlihat — paling buruk cuma kehilangan efek kilau, teksnya
+      sendiri tidak pernah ikut hilang.
+
+   Elemen pemanggil WAJIB mengisi `data-text="..."` dengan teks yang sama
+   persis dengan isi teks elemennya (lihat helper shimmerTextHtml di
+   lib/render.js) supaya kedua lapis pas menumpuk sejajar. */
 .typing-status {
   display: inline-block;
+  position: relative;
+  color: var(--ink-500) !important;
+  -webkit-text-fill-color: var(--ink-500) !important;
+}
+.typing-status::after {
+  content: attr(data-text);
+  position: absolute;
+  inset: 0;
+  left: 0;
+  white-space: nowrap;
+  pointer-events: none;
+  /* abu-abu (--ink-500) -> putih terang -> abu-abu lagi. background-size 200%
+     dipilih persis selebar dua kali teks supaya gradient-nya bisa disapu
+     penuh dari 200% ke -200% tanpa terlihat "terpotong" di ujung. */
   background-image: linear-gradient(
     90deg,
     var(--ink-500) 0%,
-    var(--ink-500) 35%,
-    var(--ink-900) 50%,
-    var(--lime-500) 52%,
-    var(--ink-900) 54%,
-    var(--ink-500) 65%,
+    var(--ink-500) 40%,
+    #FFFFFF 50%,
+    var(--ink-500) 60%,
     var(--ink-500) 100%
   );
   background-repeat: no-repeat;
-  background-size: 250% 100%;
+  background-size: 200% 100%;
   background-position: 200% 0;
   -webkit-background-clip: text !important;
   background-clip: text !important;
   color: transparent !important;
   -webkit-text-fill-color: transparent !important;
-  animation: shimmer-sweep 2.2s linear infinite;
+  animation: shimmer-sweep 2s linear infinite;
   will-change: background-position;
 }
 @keyframes shimmer-sweep {
   0% { background-position: 200% 0; }
-  100% { background-position: -50% 0; }
+  100% { background-position: -200% 0; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .typing-status {
+  .typing-status::after {
+    content: none;
     animation: none;
-    background: none;
-    -webkit-background-clip: initial !important;
-    background-clip: initial !important;
-    -webkit-text-fill-color: unset !important;
-    color: var(--ink-500) !important;
   }
 }
 
@@ -555,6 +596,25 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 }
 .msg-text h3 { font-size: 1rem; }
 .msg-text h4, .msg-text h5, .msg-text h6 { font-size: 0.92rem; }
+
+/* ---- Auto-heading dari baris HURUF BESAR SEMUA tanpa sintaks markdown ----
+   AI kadang menulis judul bagian pakai huruf kapital semua ("KESIMPULAN",
+   "LANGKAH-LANGKAH") tanpa "#" di depannya. Baris begini dideteksi otomatis
+   di renderFormattedText/renderMarkdownToWordHtml (lihat ALLCAPS heading
+   check di render.js) dan di-titlecase + diberi gaya "label bagian" — bukan
+   tampil sebagai teks kapital mentah yang terkesan "berteriak"/tidak rapi. */
+.msg-text .msg-auto-heading {
+  display: block;
+  font-family: 'Space Grotesk', 'SpaceGrotesk-fallback', ui-sans-serif, sans-serif;
+  font-weight: 700;
+  font-size: 0.92rem;
+  letter-spacing: 0.01em;
+  color: inherit;
+  border-left: 3px solid var(--lime-500);
+  padding: 0.05em 0 0.05em 0.65em;
+  margin: 0.9em 0 0.4em;
+}
+.msg-text > :first-child.msg-auto-heading { margin-top: 0; }
 
 /* ---- Garis pemisah "---" ---- */
 .msg-text hr.msg-hr {
