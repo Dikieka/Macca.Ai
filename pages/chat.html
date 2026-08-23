@@ -249,19 +249,33 @@
                    begitu bindAttachMenu() jalan, elemen ini dipindah ke <body> & posisinya
                    dihitung ulang via position:fixed (lihat komentar di chat.js kenapa). -->
               <div id="attachMenu" class="hidden absolute bottom-11 left-0 w-52 doc-card p-1.5 shadow-xl z-50">
-                <label class="flex items-center gap-2.5 px-2.5 py-2 rounded-md text-sm text-ink-900 hover:bg-paper-100 cursor-pointer">
-                  <i data-lucide="file-text" class="w-4 h-4 text-ink-500"></i> Unggah dokumen
-                  <input type="file" id="fileInput" class="hidden" accept=".pdf,.docx,.xlsx,.txt,.csv,.md" />
-                </label>
-                <label class="flex items-center gap-2.5 px-2.5 py-2 rounded-md text-sm text-ink-900 hover:bg-paper-100 cursor-pointer">
-                  <i data-lucide="image" class="w-4 h-4 text-ink-500"></i> Unggah foto
-                  <input type="file" id="photoInput" class="hidden" accept="image/*" />
-                </label>
-                <label class="flex items-center gap-2.5 px-2.5 py-2 rounded-md text-sm text-ink-900 hover:bg-paper-100 cursor-pointer">
-                  <i data-lucide="camera" class="w-4 h-4 text-ink-500"></i> Ambil foto
-                  <input type="file" id="cameraInput" class="hidden" accept="image/*" capture="environment" />
-                </label>
-              </div>
+              <label class="flex items-start gap-2.5 px-2.5 py-2 rounded-md text-sm text-ink-900 hover:bg-paper-100 cursor-pointer">
+                <i data-lucide="file-text" class="w-4 h-4 text-ink-500 mt-0.5"></i>
+                <div class="flex flex-col leading-tight">
+                  <span>Unggah dokumen</span>
+                  <span class="text-[10px] font-mono font-normal text-ink-500">PDF, DOC, XLS</span>
+                </div>
+                <input type="file" id="fileInput" class="hidden" accept=".pdf,.docx,.xlsx,.txt,.csv,.md" />
+              </label>
+
+              <label class="flex items-start gap-2.5 px-2.5 py-2 rounded-md text-sm text-ink-900 hover:bg-paper-100 cursor-pointer">
+                <i data-lucide="image" class="w-4 h-4 text-ink-500 mt-0.5"></i>
+                <div class="flex flex-col leading-tight">
+                  <span>Unggah foto</span>
+                  <span class="text-[10px] font-mono font-normal text-ink-500">JPG, PNG, WEBP</span>
+                </div>
+                <input type="file" id="photoInput" class="hidden" accept="image/*" />
+              </label>
+
+              <label class="flex items-start gap-2.5 px-2.5 py-2 rounded-md text-sm text-ink-900 hover:bg-paper-100 cursor-pointer">
+                <i data-lucide="camera" class="w-4 h-4 text-ink-500 mt-0.5"></i>
+                <div class="flex flex-col leading-tight">
+                  <span>Ambil foto</span>
+                  <span class="text-[10px] font-mono font-normal text-ink-500">Gunakan kamera perangkat</span>
+                </div>
+                <input type="file" id="cameraInput" class="hidden" accept="image/*" capture="environment" />
+              </label>
+            </div>
             </div>
             <!-- Pemilihan model manual (#6): default "Otomatis" pakai routeModel() di server,
                  tapi user bisa memilih model tertentu kalau model default sedang bermasalah.
