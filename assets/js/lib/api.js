@@ -16,9 +16,8 @@ import { getSession } from "./auth.js";
  */
 // PERBAIKAN (riwayat chat "loading" selamanya): fetch() browser TIDAK punya batas
 // waktu bawaan. Kalau Apps Script Web App macet/lambat merespons (cold start,
-// kena antrian LockService, kuota, dsb — lihat callApiWithProgress yang sudah
-// lebih dulu diberi xhr.timeout karena masalah persis ini di jalur upload),
-// promise callApi() bisa menggantung TANPA PERNAH resolve/reject. Akibatnya
+// kena antrian LockService, kuota, dsb), promise callApi() bisa menggantung TANPA
+// PERNAH resolve/reject. Akibatnya
 // kode pemanggil (mis. loadChatList() di chat.js/sidebar.js) tidak pernah
 // keluar dari blok try, skeleton animate-pulse di #chatList tidak pernah
 // diganti, dan yang terlihat oleh user cuma "loading" tanpa henti — tidak ada
@@ -39,8 +38,17 @@ const DEFAULT_TIMEOUT_MS = 20000;
 // ini dapat jatah waktu jauh lebih panjang; action ringan (getChatHistory, dsb) tetap pakai
 // DEFAULT_TIMEOUT_MS supaya UI lain tidak ikut terasa "menggantung" kalau server memang
 // benar-benar tidak merespons.
+// PERBAIKAN (upload dokumen "server tidak merespons" padahal masih diproses normal):
+// handleUploadDocument() di documents.gs melakukan beberapa langkah BERURUTAN dalam
+// satu request — cek kuota, upload ke Cloudinary (network call ke server lain), simpan
+// baris dokumen, lalu potong & proses teks jadi chunks buat RAG (chunkAndStoreDocument_).
+// Untuk file yang lumayan panjang (docx/pdf multi-halaman), total waktu itu gampang
+// lewat 20 detik, apalagi kalau Apps Script sedang cold start atau Cloudinary agak
+// lambat — padahal server tetap akan selesai memproses & menjawab kalau ditunggu.
+// "uploadDocument" karena itu dapat jatah waktu panjang yang sama seperti aksi
+// generate AI, bukan DEFAULT_TIMEOUT_MS yang dirancang untuk aksi ringan.
 const LONG_TIMEOUT_MS = 75000;
-const LONG_TIMEOUT_ACTIONS_ = new Set(["sendChatMessage", "editMessage", "regenerateReply", "continueReply", "paraphrase"]);
+const LONG_TIMEOUT_ACTIONS_ = new Set(["sendChatMessage", "editMessage", "regenerateReply", "continueReply", "paraphrase", "uploadDocument"]);
 
 export async function callApi(action, payload = {}, opts = { auth: true }) {
   const body = { action, ...payload };
