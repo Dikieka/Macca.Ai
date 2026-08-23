@@ -102,7 +102,33 @@ function renderGreeting() {
   const greetingEl = document.getElementById("greeting");
   if (greetingEl) greetingEl.textContent = `${part}${name ? ", " + name : ""}.`;
   document.getElementById("userName").textContent = session.user?.fullName || session.user?.email || "Pengguna";
-  document.getElementById("avatarInitial").textContent = (session.user?.fullName || "U").charAt(0).toUpperCase();
+  renderAvatar_(document.getElementById("avatarImg"), document.getElementById("avatarInitialText"), session.user);
+}
+
+/**
+ * PENTING (foto profil Google tidak muncul): sebelumnya kode di sini cuma
+ * mengisi avatarInitial.textContent dengan huruf pertama nama, TIDAK PERNAH
+ * memakai session.user.avatarUrl sama sekali — padahal backend (handleGoogleLogin
+ * di auth.gs) sudah benar menyimpan & mengirim foto profil Google. Sekarang: kalau
+ * avatarUrl ada (akun Google), tampilkan <img>; kalau tidak ada (akun email/password,
+ * yang memang tidak punya foto), tetap fallback ke lingkaran inisial seperti semula.
+ */
+function renderAvatar_(imgEl, initialEl, user) {
+  const url = user?.avatarUrl;
+  if (imgEl && url) {
+    imgEl.src = url;
+    imgEl.classList.remove("hidden");
+    imgEl.onerror = () => {
+      // Foto gagal dimuat (mis. link Google kadaluarsa) -> fallback diam-diam ke inisial.
+      imgEl.classList.add("hidden");
+      if (initialEl) initialEl.classList.remove("hidden");
+    };
+    if (initialEl) initialEl.classList.add("hidden");
+  } else {
+    if (imgEl) imgEl.classList.add("hidden");
+    if (initialEl) initialEl.classList.remove("hidden");
+  }
+  if (initialEl) initialEl.textContent = (user?.fullName || "U").charAt(0).toUpperCase();
 }
 
 /**

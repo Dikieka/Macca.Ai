@@ -25,7 +25,24 @@ function prefillForm() {
   document.getElementById("fullName").value = user.fullName || "";
   document.getElementById("email").value = user.email || "";
   document.getElementById("preferredLanguage").value = user.preferredLanguage || "id";
-  document.getElementById("avatarPreview").textContent = (user.fullName || "U").charAt(0).toUpperCase();
+
+  // Sama seperti perbaikan di chat.js: pakai avatarUrl (foto Google) kalau ada,
+  // fallback ke lingkaran inisial kalau tidak (akun email/password).
+  const img = document.getElementById("avatarPreviewImg");
+  const textEl = document.getElementById("avatarPreviewText");
+  if (img && user.avatarUrl) {
+    img.src = user.avatarUrl;
+    img.classList.remove("hidden");
+    img.onerror = () => {
+      img.classList.add("hidden");
+      if (textEl) textEl.classList.remove("hidden");
+    };
+    if (textEl) textEl.classList.add("hidden");
+  } else {
+    if (img) img.classList.add("hidden");
+    if (textEl) textEl.classList.remove("hidden");
+  }
+  if (textEl) textEl.textContent = (user.fullName || "U").charAt(0).toUpperCase();
 }
 
 function bindForm() {

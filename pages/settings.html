@@ -92,7 +92,10 @@
         <h2 class="font-display font-semibold text-ink-900">Profil</h2>
         <form id="profileForm" class="mt-4 space-y-4">
           <div class="flex items-center gap-4">
-            <div id="avatarPreview" class="w-14 h-14 rounded-full bg-lime-500 text-paper-50 grid place-items-center font-display text-xl font-semibold shrink-0">U</div>
+            <div id="avatarPreview" class="w-14 h-14 rounded-full bg-lime-500 text-paper-50 grid place-items-center font-display text-xl font-semibold shrink-0 overflow-hidden">
+              <img id="avatarPreviewImg" class="w-full h-full object-cover hidden" alt="" />
+              <span id="avatarPreviewText">U</span>
+            </div>
             <div class="text-sm text-ink-500">Foto profil mengikuti akun Google (jika login via Google).</div>
           </div>
           <div>
