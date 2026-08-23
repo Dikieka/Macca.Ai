@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Chat — Macca.Ai</title>
+<meta name="description" content="Ruang kerja chat Macca.Ai — ngobrol sama AI yang inget dokumen dan proyekmu." />
+<meta name="robots" content="noindex, nofollow" />
+<meta property="og:type" content="website" />
+<meta property="og:title" content="Chat — Macca.Ai" />
+<meta property="og:description" content="Ruang kerja chat Macca.Ai — ngobrol sama AI yang inget dokumen dan proyekmu." />
+<meta property="og:image" content="../assets/icons/icon-512.png" />
+<meta property="og:url" content="https://macca.ai/pages/chat.html" />
+<meta property="og:site_name" content="Macca.Ai" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="Chat — Macca.Ai" />
+<meta name="twitter:description" content="Ruang kerja chat Macca.Ai — ngobrol sama AI yang inget dokumen dan proyekmu." />
+<meta name="twitter:image" content="../assets/icons/icon-512.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Press+Start+2P&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+<!-- Export balasan AI (perbaikan #4): jsPDF untuk PDF. Excel/Word dibuat lewat trik
+     Blob HTML (mime application/vnd.ms-excel / application/msword) di chat.js — Office
+     & Google Sheets/Docs bisa membuka file ini tanpa perlu library tambahan, jadi
+     dependency-nya cukup satu CDN saja. -->
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<link rel="stylesheet" href="../assets/css/style.css" />
+<link rel="icon" type="image/x-icon" href="../assets/icons/favicon.ico" />
+<link rel="icon" type="image/png" sizes="32x32" href="../assets/icons/favicon-32x32.png" />
+<link rel="icon" type="image/png" sizes="16x16" href="../assets/icons/favicon-16x16.png" />
+<link rel="apple-touch-icon" sizes="180x180" href="../assets/icons/apple-touch-icon.png" />
+<link rel="manifest" href="../assets/icons/site.webmanifest" />
+<script>
+  tailwind.config = {
+    theme: { extend: {
+      colors: { ink:{900:'#EDF0F7',700:'#B7BECF',500:'#7B8298'}, paper:{50:'#0A0C11',100:'#14161F',200:'#20232F'}, amber:{500:'#FFC145',600:'#E0A62E'}, sage:{500:'#3CE6A6',100:'#10261F'}, clay:{500:'#FF5C7A'}, lime:{500:'#C6FF3D',600:'#A6DE22'} },
+      fontFamily: { display:['Space Grotesk','sans-serif'], sans:['Inter','system-ui','sans-serif'], mono:['JetBrains Mono','monospace'], pixel:['"Press Start 2P"','monospace'] }
+    }}
+  }
+</script>
+</head>
+<body class="bg-paper-50 text-[var(--charcoal-900)]">
+<div class="flex h-screen overflow-hidden">
+
+  <!-- ============ SIDEBAR ============ -->
+  <!-- #3: id="sidebar" + lebar diatur lewat inline style oleh lib/sidebar.js (localStorage),
+       "w-64" sengaja dihapus supaya tidak bentrok dengan style.width yang di-set JS. -->
+  <aside id="sidebar" class="shrink-0 border-r border-[var(--line)] bg-paper-100/60 flex flex-col" style="width:256px">
+    <div class="h-16 flex items-center px-5 border-b border-[var(--line)]">
+      <a href="../index.html" class="flex items-center gap-2 font-display text-lg font-semibold text-ink-900">
+        <span class="w-6 h-6 rounded-sm bg-lime-500 text-paper-50 grid place-items-center font-pixel text-[7px]">M</span>
+        Macca.Ai
+      </a>
+    </div>
+    <div class="p-4">
+      <button id="newChatBtn" class="btn-amber w-full rounded-md py-2.5 text-sm font-semibold flex items-center justify-center gap-2">
+        <i data-lucide="plus" class="w-4 h-4"></i> Chat Baru
+      </button>
+    </div>
+    <nav class="flex-1 overflow-y-auto thin-scroll px-3 space-y-1 text-sm">
+      <a href="chat.html" data-sidebar-link class="flex items-center gap-2.5 px-3 py-2 rounded-md text-ink-900 bg-paper-100 font-semibold">
+        <i data-lucide="message-square" class="w-4 h-4"></i> Chats
+      </a>
+      <a href="projects.html" class="flex items-center gap-2.5 px-3 py-2 rounded-md text-ink-500 hover:bg-paper-100 hover:text-ink-900">
+        <i data-lucide="folder-kanban" class="w-4 h-4"></i> Projects
+      </a>
+      <a href="documents.html" class="flex items-center gap-2.5 px-3 py-2 rounded-md text-ink-500 hover:bg-paper-100 hover:text-ink-900">
+        <i data-lucide="file-text" class="w-4 h-4"></i> Documents
+      </a>
+      <a href="memory.html" class="flex items-center gap-2.5 px-3 py-2 rounded-md text-ink-500 hover:bg-paper-100 hover:text-ink-900">
+        <i data-lucide="brain" class="w-4 h-4"></i> Memory
+      </a>
+      <a href="paraphrase.html" class="flex items-center gap-2.5 px-3 py-2 rounded-md text-ink-500 hover:bg-paper-100 hover:text-ink-900">
+        <i data-lucide="wand-2" class="w-4 h-4"></i> Parafrase
+      </a>
+      <p class="px-3 pt-5 pb-1 text-xs font-mono text-ink-500">RIWAYAT</p>
+      <div id="chatList" class="space-y-0.5">
+        <div class="doc-card p-3 animate-pulse h-8 mx-1"></div>
+        <div class="doc-card p-3 animate-pulse h-8 mx-1"></div>
+        <div class="doc-card p-3 animate-pulse h-8 mx-1"></div>
+      </div>
+    </nav>
+    <div class="p-3 border-t border-[var(--line)] space-y-1">
+      <a href="settings.html" class="flex items-center gap-2.5 px-3 py-2 rounded-md text-sm text-ink-500 hover:bg-paper-100 hover:text-ink-900">
+        <i data-lucide="settings" class="w-4 h-4"></i> Settings
+      </a>
+      <button id="profileBtn" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-sm text-ink-900 hover:bg-paper-100">
+        <span id="avatarInitial" class="w-6 h-6 rounded-full bg-lime-500 text-paper-50 grid place-items-center text-[11px] font-semibold overflow-hidden">
+          <img id="avatarImg" class="w-full h-full object-cover hidden" alt="" />
+          <span id="avatarInitialText">U</span>
+        </span>
+        <span id="userName" class="truncate flex-1 text-left">Memuat…</span>
+        <i data-lucide="log-out" id="logoutIcon" class="w-4 h-4 text-ink-500 hover:text-clay-500"></i>
+      </button>
+    </div>
+  </aside>
+
+  <!-- #3: drag handle untuk melebar/menyempitkan sidebar (dobel klik = reset ke default) -->
+  <div id="sidebarResizeHandle" title="Geser untuk mengubah lebar sidebar"></div>
+
+  <!-- Backdrop gelap di belakang sidebar saat panel mobile terbuka (lihat sidebar.js
+       initSidebarMobile()); di layar desktop selalu disembunyikan lewat CSS. -->
+  <div id="sidebarBackdrop" class="sidebar-backdrop" aria-hidden="true"></div>
+
+  <!-- ============ CHAT AREA ============ -->
+  <!-- class="relative" ditambah supaya #dropOverlay (lihat di bawah) bisa position:absolute
+       menutupi seluruh area chat ini saat user drag file dari luar browser. -->
+  <main class="flex-1 flex flex-col min-w-0 relative">
+
+    <!-- Drag & drop overlay (mirip ChatGPT/Claude): tersembunyi default, ditampilkan oleh
+         chat.js saat user menyeret file dari luar browser ke atas area chat ini. Menutupi
+         seluruh <main> (position:absolute, lihat class "relative" di <main>) supaya jelas
+         file bisa dilepas di mana saja di area ini, bukan cuma di kotak kecil. -->
+    <div id="dropOverlay" class="hidden absolute inset-0 z-40 bg-paper-50/90 backdrop-blur-sm border-2 border-dashed border-lime-500 m-3 rounded-lg items-center justify-center flex-col gap-3 pointer-events-none">
+      <div class="w-14 h-14 rounded-full bg-lime-500/15 grid place-items-center">
+        <i data-lucide="upload" class="w-6 h-6 text-lime-500"></i>
+      </div>
+      <p class="font-display font-semibold text-ink-900">Lepas file di sini</p>
+      <p class="text-xs text-ink-500">Dokumen atau foto akan otomatis dilampirkan ke pesan</p>
+    </div>
+
+    <!-- Chat Header -->
+    <header class="h-16 shrink-0 border-b border-[var(--line)] bg-paper-50/90 backdrop-blur flex items-center justify-between px-4 sm:px-6 gap-3">
+      <div class="min-w-0 flex items-center gap-3">
+        <!-- Hamburger: cuma tampak di mobile (md:hidden), buka/tutup #sidebar
+             lewat initSidebarMobile() di sidebar.js. -->
+        <button type="button" data-sidebar-toggle aria-label="Buka menu" aria-controls="sidebar"
+          class="md:hidden shrink-0 w-9 h-9 grid place-items-center rounded-md border border-[var(--line)] text-ink-900 hover:bg-paper-100 transition-colors">
+          <i data-lucide="menu" class="w-5 h-5"></i>
+        </button>
+        <div class="min-w-0">
+          <h1 id="chatTitle" class="font-display font-semibold text-ink-900 truncate">Percakapan Baru</h1>
+          <p id="projectIndicator" class="text-xs text-ink-500 hidden items-center gap-1 mt-0.5">
+            <i data-lucide="folder" class="w-3 h-3"></i> <span></span>
+          </p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2 sm:gap-3 shrink-0">
+        <span id="modelIndicator" class="layer-badge text-ink-500 hidden font-mono"></span>
+        <button id="renameBtn" title="Ganti judul" class="text-ink-500 hover:text-ink-900"><i data-lucide="pencil" class="w-4 h-4"></i></button>
+        <button id="deleteBtn" title="Hapus chat" class="text-ink-500 hover:text-clay-500"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+      </div>
+    </header>
+
+    <!-- Message List -->
+    <!-- #6 (bug tampilan): overflow-x-hidden eksplisit di sini supaya konten pesan yang
+         sangat panjang & tidak bisa dipotong-baris (URL, kode tanpa spasi, dsb — lihat
+         break-words di chat.js) tidak pernah memicu scroll horizontal liar. Tanpa ini,
+         browser otomatis mengaktifkan scroll-x (aturan CSS: kalau overflow-y diset tapi
+         overflow-x tidak, overflow-x ikut jadi "auto") begitu ada konten yang melebar,
+         dan posisi scroll horizontal itu TIDAK ikut menyesuaikan saat lebar sidebar
+         berubah -> pesan terlihat "terpotong" di kiri/kanan setelah sidebar digeser. -->
+    <div id="messageList" class="flex-1 overflow-y-auto overflow-x-hidden thin-scroll paper-texture px-6 py-8">
+
+      <!-- Empty state: tampil kalau belum ada chat aktif (dulu ini halaman dashboard terpisah).
+           Lebar dulu fixed max-w-2xl (42rem) — sekarang max-w pakai min(REM, %) supaya
+           otomatis menyempit saat sidebar dilebarkan, dan bisa lebih lega (56rem) saat
+           sidebar disempitkan/di layar besar, alih-alih dipatok satu angka tetap. -->
+      <div id="emptyState" class="w-full max-w-[min(56rem,94%)] mx-auto mt-10">
+        <h1 id="greeting" class="font-display text-3xl sm:text-4xl font-semibold text-ink-900">Selamat datang.</h1>
+        <p class="text-ink-700 mt-2">Apa yang mau kamu kerjakan hari ini?</p>
+
+        <div class="mt-6 grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <button class="quick-action doc-card p-4 text-left" data-prompt="Bantu saya menyusun BAB 1 skripsi.">
+            <i data-lucide="graduation-cap" class="w-5 h-5 text-ink-900"></i>
+            <p class="text-xs font-semibold mt-2">Skripsi</p>
+          </button>
+          <button class="quick-action doc-card p-4 text-left" data-prompt="Ringkas dokumen yang saya unggah.">
+            <i data-lucide="file-search" class="w-5 h-5 text-ink-900"></i>
+            <p class="text-xs font-semibold mt-2">Ringkas Dokumen</p>
+          </button>
+          <button class="quick-action doc-card p-4 text-left" data-prompt="Buatkan RAB untuk proyek saya.">
+            <i data-lucide="calculator" class="w-5 h-5 text-ink-900"></i>
+            <p class="text-xs font-semibold mt-2">RAB</p>
+          </button>
+          <button class="quick-action doc-card p-4 text-left" data-prompt="Review tulisan saya dan beri masukan.">
+            <i data-lucide="shield-check" class="w-5 h-5 text-ink-900"></i>
+            <p class="text-xs font-semibold mt-2">Review</p>
+          </button>
+        </div>
+
+        <section class="mt-10">
+          <div class="flex items-center justify-between">
+            <h2 class="font-display text-lg font-semibold text-ink-900">Proyek Terbaru</h2>
+            <a href="projects.html" class="text-xs font-mono text-ink-500 hover:text-ink-900">LIHAT SEMUA</a>
+          </div>
+          <div id="recentProjects" class="mt-4 grid sm:grid-cols-2 gap-4">
+            <div class="doc-card p-5 animate-pulse h-24"></div>
+            <div class="doc-card p-5 animate-pulse h-24"></div>
+          </div>
+        </section>
+      </div>
+
+      <!-- Loading state: tampil instan begitu chat di sidebar diklik, sebelum data datang dari server. -->
+      <div id="chatLoading" class="hidden w-full max-w-[min(56rem,94%)] mx-auto space-y-6 animate-pulse">
+        <div class="flex justify-end"><div class="doc-card px-4 py-3 bg-ink-900/40 w-2/3 h-10"></div></div>
+        <div class="flex justify-start"><div class="doc-card px-4 py-3 w-3/4 h-16"></div></div>
+        <div class="flex justify-end"><div class="doc-card px-4 py-3 bg-ink-900/40 w-1/2 h-10"></div></div>
+        <div class="flex items-center justify-center gap-2 text-xs text-ink-500 font-mono pt-2">
+          <svg class="animate-spin h-3.5 w-3.5" viewBox="0 0 24 24" fill="none"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/></svg>
+          Memuat percakapan…
+        </div>
+      </div>
+
+      <div id="messages" class="w-full max-w-[min(56rem,94%)] mx-auto space-y-6"></div>
+    </div>
+
+    <!-- Prompt Composer -->
+    <div id="composerBar" class="border-t border-[var(--line)] bg-paper-50 px-6 py-4 composer-bar">
+      <!-- Lebar composer disamakan persis dengan kolom pesan (#messages, min(56rem,94%))
+           supaya kotak ketik sejajar rapi dengan bubble chat di atasnya, bukan lebih
+           lebar sendiri. Kalau kolom pesan diubah lebarnya, ubah juga angka di sini
+           supaya tetap sejajar. -->
+      <form id="composerForm" class="w-full max-w-[min(56rem,94%)] mx-auto doc-card p-3.5">
+        <!-- Quickview lampiran (perbaikan: preview foto/dokumen sebelum dikirim, mirip ChatGPT/Claude).
+             #attachmentThumb menampilkan thumbnail foto ATAU ikon dokumen; progress bar tumpang tindih
+             di atas thumbnail saat sedang diunggah, lalu hilang begitu selesai. -->
+        <div id="attachmentPreview" class="hidden mb-2.5 flex items-center gap-2.5 text-xs text-ink-700 bg-paper-200 rounded-md px-2.5 py-2 w-fit max-w-full">
+          <div class="relative shrink-0 w-10 h-10 rounded-md overflow-hidden bg-paper-100 grid place-items-center">
+            <img id="attachmentThumbImg" class="hidden w-full h-full object-cover" alt="" />
+            <i id="attachmentThumbIcon" data-lucide="file" class="w-5 h-5 text-ink-500"></i>
+            <!-- Overlay progress: spinner ring + persen, tampil hanya saat status uploading -->
+            <div id="attachmentProgressOverlay" class="hidden absolute inset-0 bg-paper-50/80 grid place-items-center">
+              <svg class="w-6 h-6 -rotate-90" viewBox="0 0 36 36">
+                <circle cx="18" cy="18" r="15.5" fill="none" stroke="var(--line)" stroke-width="3"></circle>
+                <circle id="attachmentProgressRing" cx="18" cy="18" r="15.5" fill="none" stroke="#C6FF3D" stroke-width="3"
+                  stroke-dasharray="97.4" stroke-dashoffset="97.4" stroke-linecap="round"></circle>
+              </svg>
+            </div>
+          </div>
+          <div class="min-w-0">
+            <p id="attachmentName" class="font-medium text-ink-900 truncate max-w-[12rem]"></p>
+            <p id="attachmentStatus" class="text-[11px] text-ink-500 font-mono"></p>
+          </div>
+          <button type="button" id="removeAttachment" class="shrink-0 text-ink-500 hover:text-clay-500"><i data-lucide="x" class="w-3.5 h-3.5"></i></button>
+        </div>
+        <textarea id="composerInput" rows="2" placeholder="Tulis pesan…"
+          class="w-full resize-none text-sm leading-relaxed bg-transparent text-ink-900 outline-none placeholder:text-ink-500/70 px-0.5"></textarea>
+        <div class="flex items-center justify-between mt-2.5 pt-2.5 divider-dashed">
+          <div class="flex items-center gap-2">
+            <div class="relative">
+              <button type="button" id="attachMenuBtn" title="Lampirkan"
+                class="w-8 h-8 grid place-items-center rounded-md text-ink-500 hover:text-lime-500 hover:bg-paper-100 transition-colors">
+                <i data-lucide="plus" class="w-4 h-4"></i>
+              </button>
+              <!-- Menu pilihan unggah: file dokumen atau foto, mirip composer ChatGPT/Claude.
+                   Posisi absolute/left-0 di sini cuma fallback awal render sebelum JS jalan —
+                   begitu bindAttachMenu() jalan, elemen ini dipindah ke <body> & posisinya
+                   dihitung ulang via position:fixed (lihat komentar di chat.js kenapa). -->
+              <div id="attachMenu" class="hidden absolute bottom-11 left-0 w-52 doc-card p-1.5 shadow-xl z-50">
+              <label class="flex items-start gap-2.5 px-2.5 py-2 rounded-md text-sm text-ink-900 hover:bg-paper-100 cursor-pointer">
+                <i data-lucide="file-text" class="w-4 h-4 text-ink-500 mt-0.5"></i>
+                <div class="flex flex-col leading-tight">
+                  <span>Unggah dokumen</span>
+                  <span class="text-[10px] font-mono font-normal text-ink-500">PDF, DOC, XLS</span>
+                </div>
+                <input type="file" id="fileInput" class="hidden" accept=".pdf,.docx,.xlsx,.txt,.csv,.md" />
+              </label>
+
+              <label class="flex items-start gap-2.5 px-2.5 py-2 rounded-md text-sm text-ink-900 hover:bg-paper-100 cursor-pointer">
+                <i data-lucide="image" class="w-4 h-4 text-ink-500 mt-0.5"></i>
+                <div class="flex flex-col leading-tight">
+                  <span>Unggah foto</span>
+                  <span class="text-[10px] font-mono font-normal text-ink-500">JPG, PNG, WEBP</span>
+                </div>
+                <input type="file" id="photoInput" class="hidden" accept="image/*" />
+              </label>
+
+              <label class="flex items-start gap-2.5 px-2.5 py-2 rounded-md text-sm text-ink-900 hover:bg-paper-100 cursor-pointer">
+                <i data-lucide="camera" class="w-4 h-4 text-ink-500 mt-0.5"></i>
+                <div class="flex flex-col leading-tight">
+                  <span>Ambil foto</span>
+                  <span class="text-[10px] font-mono font-normal text-ink-500">Gunakan kamera perangkat</span>
+                </div>
+                <input type="file" id="cameraInput" class="hidden" accept="image/*" capture="environment" />
+              </label>
+            </div>
+            </div>
+            <!-- Pemilihan model manual (#6): default "Otomatis" pakai routeModel() di server,
+                 tapi user bisa memilih model tertentu kalau model default sedang bermasalah.
+                 PERBAIKAN (desain dropdown native browser terlihat "plain"/tidak konsisten
+                 dengan tema gelap Macca): diganti jadi tombol + menu custom (portal ke <body>,
+                 position:fixed), sama persis pola yang sudah dipakai #attachMenu di atas,
+                 supaya konsisten dengan doc-card/lime-500/dashed-border di seluruh app. -->
+            <div class="relative">
+              <button type="button" id="modelPickerBtn" title="Pilih model AI"
+                class="flex items-center gap-1.5 text-xs bg-paper-100 border border-[var(--line)] rounded-md px-2.5 py-1.5 text-ink-700 outline-none hover:border-lime-500/60 focus:border-lime-500 transition-colors max-w-[10.5rem]">
+                <i data-lucide="cpu" class="w-3.5 h-3.5 text-ink-500 shrink-0"></i>
+                <span id="modelPickerLabel" class="truncate">Otomatis (disarankan)</span>
+                <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-ink-500 shrink-0 ml-auto"></i>
+              </button>
+              <div id="modelMenu" class="hidden fixed w-64 doc-card p-1.5 shadow-xl z-50 max-h-72 overflow-y-auto thin-scroll"></div>
+            </div>
+          </div>
+          <button type="submit" id="sendBtn" class="btn-amber rounded-md px-4 py-2 text-sm font-semibold flex items-center gap-2">
+            Kirim <i data-lucide="arrow-up" class="w-4 h-4"></i>
+          </button>
+          <!-- #5 (stop generate ala ChatGPT): disembunyikan by default, ditukar dengan
+               #sendBtn selama proses kirim/generate berlangsung — lihat beginGeneration()/
+               endGeneration() di chat.js. -->
+          <button type="button" id="stopBtn" title="Hentikan"
+            class="hidden rounded-md px-4 py-2 text-sm font-semibold items-center gap-2 bg-ink-900 text-paper-50 hover:bg-ink-900/90">
+            <i data-lucide="square" class="w-3.5 h-3.5"></i> Stop
+          </button>
+        </div>
+      </form>
+      <p class="text-center text-[11px] text-ink-500/70 mt-2 font-mono">Macca bisa saja keliru. Periksa kembali informasi penting.</p>
+    </div>
+  </main>
+</div>
+
+<script type="module" src="../assets/js/pages/chat.js"></script>
+</body>
+</html>
